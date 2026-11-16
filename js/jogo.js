@@ -171,7 +171,16 @@ function playTeleport(ctx,t0){ctx=ctx||sndCtx;if(!ctx)return;try{
 function playSuper(){sndUnlock();playSnd('kick');setTimeout(()=>playSnd('punch'),150);setTimeout(()=>playZap(),300)}
 let eshots=[];
 dummy.energy=0;dummy.actionUntil=0;dummy.stunUntil=0;dummy.pend=null;
-const AI_ON=()=>!!(window.OpponentAI&&selectedMode==='vs'&&dummyMode==='attack');
+// ===== Jogador 2 humano (modo VS "contra jogador") =====
+// O P2 é o próprio "dummy": o teclado alimenta a mesma interface que a IA usa ({move, attack, charge}).
+// Teclas do P2: ← → mover · P soco · O chute · I especial (tiro) · L carregar energia.
+let vsOpponent='ai';   // 'ai' ou 'player' (escolhido na tela "Versus", antes da seleção de personagem)
+const P2_HUMAN=()=>selectedMode==='vs'&&vsOpponent==='player';
+const held2=new Set(),keys2={arrowleft:'left',arrowright:'right',arrowup:'jump',arrowdown:'crouch',p:'punch',o:'kick',i:'special',l:'charge'};
+let p2Hit=null;   // golpe apertado e ainda não consumido pelo aiStep (como no P1, apertar durante outro golpe é ignorado)
+function p2Press(k){if(!fightLive()||held2.has(k))return;held2.add(k);if(k==='punch')p2Hit='punch';else if(k==='kick')p2Hit='kick';else if(k==='special')p2Hit='shot'}
+const P2Pad={reset(){held2.clear();p2Hit=null},decide(){const a=p2Hit;p2Hit=null;return{move:(held2.has('right')?1:0)-(held2.has('left')?1:0),attack:a,charge:held2.has('charge')}}};
+const AI_ON=()=>selectedMode==='vs'&&dummyMode==='attack'&&(P2_HUMAN()||!!window.OpponentAI);
 const AI_ATTACKING=['punch','kick','shot','superPunch','superKick','superShot','mega'];
 function aiHitPlayer(dmg,unparry){
   if(hp<=0||!fightLive())return;
@@ -209,8 +218,8 @@ function aiStep(dt){
     if(s.life>0&&fightLive()&&Math.abs(s.x-x)<s.size/2+22&&Math.abs(s.y-(y-90))<70){aiHitPlayer(s.damage);if(s.wmega){zImpacts.push({t:clock,x,y:y-90,k:2});zShake=Math.max(zShake,12)}s.life=0}}
   eshots=eshots.filter(s=>s.life>0&&s.x>0&&s.x<960);
   if(dummy.hp<=0||!fightLive()||dummy.cliffFalling){if(typeof wesleyDummyReset==='function'&&(dummy.wAct||dummy.charging))wesleyDummyReset();return}
-  const AI=window.OpponentAI;
-  dummy.energy=Math.min(100,dummy.energy+8*dt);
+  const AI=P2_HUMAN()?P2Pad:window.OpponentAI;
+  if(!P2_HUMAN())dummy.energy=Math.min(100,dummy.energy+8*dt);   // IA recupera sozinha; o P2 humano precisa carregar (L)
   // golpe em andamento: o dano sai no meio da animação
   const p=dummy.pend;
   if(p&&clock>=p.at){dummy.pend=null;const a=specs[p.name];
@@ -218,7 +227,7 @@ function aiStep(dt){
     else if(Math.abs(dummy.x-x)<=a.range+8&&Math.abs(y-floor)<80)aiHitPlayer(a.dmg)}
   // Super soco do Wesley em andamento: o inimigo não anda nem ataca; só pode dar parry.
   const lk=superLock();
-  if(lk&&!dummy.wasLocked){dummy.lockAt=clock+SUPER_LOCK_REACT[0]+Math.random()*(SUPER_LOCK_REACT[1]-SUPER_LOCK_REACT[0]);dummy.lockDid=Math.random()>=SUPER_LOCK_PARRY_CHANCE}
+  if(lk&&!dummy.wasLocked){dummy.lockAt=clock+SUPER_LOCK_REACT[0]+Math.random()*(SUPER_LOCK_REACT[1]-SUPER_LOCK_REACT[0]);dummy.lockDid=P2_HUMAN()||Math.random()>=SUPER_LOCK_PARRY_CHANCE}
   dummy.wasLocked=lk;
   if(lk&&typeof wesleyDummyInterrupt==='function')wesleyDummyInterrupt();
   if(lk){if(!dummy.lockDid&&clock>=dummy.lockAt){dummy.lockDid=true;aiLockEscape()}return}
@@ -235,10 +244,10 @@ function aiStep(dt){
   let r;try{r=AI.decide(s,dt)||{}}catch(e){console.error('Erro na IA:',e);r={}}
   if(stunned||busy){if(dummy.charging)dummyChargeSet(false);return}
   const mv=clamp(+r.move||0,-1,1);
-  if(dummyChar==='wesley'&&r.charge&&!r.attack&&!mv){dummy.energy=Math.min(100,dummy.energy+15*dt);if(!dummy.charging)dummyChargeSet(true);return}
+  if((dummyChar==='wesley'||P2_HUMAN())&&r.charge&&!r.attack&&!mv){dummy.energy=Math.min(100,dummy.energy+15*dt);if(!dummy.charging)dummyChargeSet(true);return}
   if(dummy.charging)dummyChargeSet(false);
   const oldX=dummy.x;
-  if(mv){dummy.x=clamp(dummy.x+mv*200*dt,55,905);dummyCliffDropBegin();}
+  if(mv){dummy.x=clamp(dummy.x+mv*(P2_HUMAN()?250:200)*dt,55,905);dummyCliffDropBegin();}
   if(dummyChar==='wesley' && Math.abs(dummy.x-oldX)>.1){
     dummy.wesleyWalkDistance=(dummy.wesleyWalkDistance||0)+Math.abs(dummy.x-oldX);
     dummy.wesleyWalkUntil=clock+130;
@@ -315,7 +324,13 @@ function press(k){
 }
 function release(k){held.delete(k)}
 document.querySelectorAll('[data-k]').forEach(b=>{const k=b.dataset.k;b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);press(k);b.classList.add('active')});for(const ev of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(ev,()=>{release(k);b.classList.remove('active')})});
-document.addEventListener('keydown',e=>{let k=keys[e.key.toLowerCase()];if(k){e.preventDefault();if(!e.repeat)press(k)}});document.addEventListener('keyup',e=>{let k=keys[e.key.toLowerCase()];if(k)release(k)});window.addEventListener('blur',()=>held.clear());
+document.addEventListener('keydown',e=>{const kn=e.key.toLowerCase();
+ if(P2_HUMAN()&&keys2[kn]){e.preventDefault();if(!e.repeat&&!menuOpen)p2Press(keys2[kn]);return}   // setas, P, O, I, L são só do P2
+ let k=keys[kn];if(k){e.preventDefault();if(!e.repeat)press(k)}});
+document.addEventListener('keyup',e=>{const kn=e.key.toLowerCase();
+ if(P2_HUMAN()&&keys2[kn]){held2.delete(keys2[kn]);return}
+ let k=keys[kn];if(k)release(k)});
+window.addEventListener('blur',()=>{held.clear();held2.clear()});
 function line(x1,y1,x2,y2,w,col){g.strokeStyle=col;g.lineWidth=w;g.lineCap='square';g.beginPath();g.moveTo(Math.round(x1),Math.round(y1));g.lineTo(Math.round(x2),Math.round(y2));g.stroke()}
 function bar(x,y,w,value,color){g.fillStyle='#162438';g.fillRect(x,y,w,20);g.fillStyle=color;g.fillRect(x,y,w*value/100,20);g.strokeStyle='#fff';g.lineWidth=2;g.strokeRect(x,y,w,20)}
 const stageImage=new Image();stageImage.src='mapas/floresta-serena.jpg';
@@ -585,12 +600,12 @@ function lifeSegs(total,id){const c=LIFE[id];let r=total;const red=Math.min(r,c[
 function resetFighterState(){playerCliffFalling=false;dummy.cliffFalling=false;dummy.cliffFallY=0;dummy.cliffFallVy=0;x=240;y=floor;vy=0;face=1;walk=0;action='';actionUntil=0;stunUntil=0;parryUntil=0;parryStartAt=-1;parryHitAt=-1;charging=false;energy=0;
   if(pendingShot){clearTimeout(pendingShot);pendingShot=null}
   scareState=0;zMegaStart=-1;zTpStart=-1;zImpacts=[];zShake=0;zDim=0;zCr=0;zChT=0;zChOut=0;
-  dummy.x=stageHazardDamage()?650:730;dummy.flash=0;dummy.attackTimer=0;dummy.attackAnim=0;shots=[];effects=[];held.clear();eshots=[];dummy.energy=0;dummy.actionUntil=0;dummy.stunUntil=0;dummy.pend=null;dummy.parryUntil=0;dummy.wasLocked=false;if(typeof wesleyDummyReset==='function')wesleyDummyReset();if(window.OpponentAI)OpponentAI.reset()}
+  dummy.x=stageHazardDamage()?650:730;dummy.flash=0;dummy.attackTimer=0;dummy.attackAnim=0;shots=[];effects=[];held.clear();held2.clear();p2Hit=null;eshots=[];dummy.energy=0;dummy.actionUntil=0;dummy.stunUntil=0;dummy.pend=null;dummy.parryUntil=0;dummy.wasLocked=false;if(typeof wesleyDummyReset==='function')wesleyDummyReset();if(window.OpponentAI)OpponentAI.reset()}
 function showBanner(text,dur){banner={text,t:dur,dur}}
-function endRound(w,text){if(roundState!=='fight')return;roundState='ko';rsTimer=1.7;roundWinner=w;if(w>=0)roundWins[w]++;showBanner(text||'K.O.',99);shots=[];eshots=[];dummy.pend=null;held.clear()}
+function endRound(w,text){if(roundState!=='fight')return;roundState='ko';rsTimer=1.7;roundWinner=w;if(w>=0)roundWins[w]++;showBanner(text||'K.O.',99);shots=[];eshots=[];dummy.pend=null;held.clear();held2.clear();p2Hit=null}
 function nextRound(){if(roundWinner>=0)round++;resetFighterState();hp=maxHp;dummy.hp=dummyMax;roundTime=99;roundState='intro';rsTimer=1.6;showBanner('ROUND '+round,1.6)}
 function finishMatch(){matchOver=true;const pw=roundWins[0]>=WINS_NEEDED;
-  document.getElementById('endTitle').textContent=charName(pw?selectedCharacter:dummyChar)+' VENCEU!';
+  document.getElementById('endTitle').textContent=(P2_HUMAN()?(pw?'P1 · ':'P2 · '):'')+charName(pw?selectedCharacter:dummyChar)+' VENCEU!';
   document.body.classList.add('matchEnd');const o=document.getElementById('endOverlay');o.hidden=false;const b=o.querySelector('button');if(b)b.focus({preventScroll:true})}
 function hideEndOverlay(){matchOver=false;document.body.classList.remove('matchEnd');document.getElementById('endOverlay').hidden=true}
 function roundUpdate(dt){
@@ -654,7 +669,7 @@ function drawCombatHUD(){
  lifeBar(63,21,348,17,hp,selectedCharacter,false);
  lifeBar(549,21,348,17,dummyMode==='none'?dummyMax:dummy.hp,dummyChar,true);
  hudMeter(70,49,330,11,energy,['#94f8ff','#26caff','#177bd4'],false,true);
- hudMeter(560,49,330,11,0,['#94f8ff','#26caff','#177bd4'],true,true);
+ hudMeter(560,49,330,11,P2_HUMAN()?dummy.energy:0,['#94f8ff','#26caff','#177bd4'],true,true);
  portrait(33,32);portrait(927,32,true);
  polygon([[480,7],[503,30],[480,69],[457,30]],'#31202d','#f3af4b',3);
  g.shadowBlur=0;g.shadowOffsetY=0;
@@ -693,6 +708,7 @@ function drawDummyChar(){
   else if(atk&&ok(zuskPunch)){img=zuskPunch;cw=ZKP.cw;ch=ZKP.ch;base=ZKP.base;ax=cw/2;fi=[1,2,3,3,4,4,5,6][Math.floor(p*8)];lunge=Math.sin(p*Math.PI)*5}
  }
  const breathe=(!flash&&!atk)?1+Math.sin(clock/380)*.012:1;
+ if(dummy.charging&&dummyChar!=='wesley'&&!dummy.cliffFalling){g.save();g.globalAlpha=.3+.15*Math.sin(clock/70);g.fillStyle='#ffe066';g.beginPath();g.ellipse(Math.round(dummy.x),floor-85,50,100,0,0,Math.PI*2);g.fill();g.restore()}
  if(!dummy.cliffFalling){g.save();g.fillStyle='rgba(16,24,39,.42)';g.beginPath();g.ellipse(Math.round(dummy.x),floor+3,36,6,0,0,Math.PI*2);g.fill();g.restore();}
  g.save();g.translate(Math.round(dummy.x),floor+(dummy.cliffFallY||0));g.scale(fc,1);g.translate(lunge,0);g.rotate(tilt);g.scale(1,breathe);
  if(flash){g.shadowColor='#ffe58d';g.shadowBlur=18}
@@ -731,6 +747,8 @@ const IC=(()=>{const o='<svg viewBox="0 0 24 24" fill="#ffd34a" stroke="#5a2a10"
  exit:o+'<path d="M4 3.5h9.5v17H4z"/><path d="M15.5 8.2L20 12l-4.5 3.8M19.8 12H10.5" fill="none" stroke="#ffd34a" stroke-width="2.6"/>'+c,
  back:o+'<path d="M10 4.8L2.8 12 10 19.2v-4.1h10.4V8.9H10z"/>'+c,
  gear:o+'<path d="M12 2.5l1.7 2.4 2.9-.7.7 2.9 2.9.7-.7 2.9 2.4 1.7-2.4 1.7.7 2.9-2.9.7-.7 2.9-2.9-.7L12 21.5l-1.7-2.4-2.9.7-.7-2.9-2.9-.7.7-2.9L2.1 12l2.4-1.7-.7-2.9 2.9-.7.7-2.9 2.9.7z"/><circle cx="12" cy="12" r="3.3" fill="#5a2a10"/>'+c}})();
+IC.cpu='<svg viewBox="0 0 24 24" fill="#ffd34a" stroke="#5a2a10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5" fill="#5a2a10"/><path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3" fill="none" stroke-width="2"/></svg>';
+IC.duo='<svg viewBox="0 0 24 24" fill="#ffd34a" stroke="#5a2a10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><circle cx="8" cy="8" r="3.2"/><circle cx="16.5" cy="8" r="3.2"/><path d="M2.5 20c0-3.8 2.5-6.2 5.5-6.2s5.5 2.4 5.5 6.2z"/><path d="M14 14.2c.8-.3 1.6-.4 2.5-.4 3 0 5 2.4 5 6.2h-5.4"/></svg>';
 
 let storyMsg='';
 function storyLoad(){try{const a=JSON.parse(localStorage.getItem('arena_story_slots')||'[]');return [0,1,2].map(i=>a[i]||null)}catch(e){return [null,null,null]}}
@@ -742,14 +760,15 @@ function storySlotAction(i,act){i=+i;const sl=storyLoad();const now=Date.now();
  if(act==='new'){if(sl[i]&&!confirm('Apagar o Save '+(i+1)+' e começar um novo jogo?'))return;sl[i]={chapter:1,created:now,updated:now};storyMsg='Save '+(i+1)+': novo jogo criado. A história ainda está em construção.'}
  else{sl[i].updated=now;storyMsg='Save '+(i+1)+': continuando do Capítulo '+sl[i].chapter+'. A história ainda está em construção.'}
  storySave(sl);showMenu('story')}
-function showMenu(page){menuOpen=true;menuPage=page;overlay.classList.remove('hidden');overlay.classList.toggle('homeScreen',page==='home');overlay.classList.toggle('stageScreen',page==='stage');overlay.classList.toggle('charScreen',page==='character'||page==='opponent');overlay.classList.toggle('panelScreen',page==='pause'||page==='combos'||page==='config'||page==='story');held.clear();
+function showMenu(page){menuOpen=true;menuPage=page;overlay.classList.remove('hidden');overlay.classList.toggle('homeScreen',page==='home');overlay.classList.toggle('stageScreen',page==='stage');overlay.classList.toggle('charScreen',page==='character'||page==='opponent');overlay.classList.toggle('panelScreen',page==='pause'||page==='combos'||page==='config'||page==='story'||page==='vsmode');held.clear();
  if(page==='pause')content.innerHTML=`<h2><i class="hi">${IC.pause}</i>Jogo pausado</h2>${selectedMode==='train'?`<div class="settingsRow"><label for="pauseDummy">Manequim</label><select id="pauseDummy">${[...document.getElementById('dummyMode').options].map(o=>`<option value="${o.value}"${o.value===dummyMode?' selected':''}>${o.text}</option>`).join('')}</select></div><div class="settingsRow"><label for="pauseOpp">Personagem do manequim</label><select id="pauseOpp">${CHARACTERS.map(c=>`<option value="${c.id}"${c.id===dummyChar?' selected':''}>${c.name}</option>`).join('')}</select></div>`:''}<div class="settingsRow"><label for="touchToggle">Controles na tela</label><input type="checkbox" id="touchToggle"${touchOn?' checked':''}></div><div class="menuStack"><button class="primary" data-next="resume"><i class="gi">${IC.play}</i><span>Continuar</span></button><button data-next="combos"><i class="gi">${IC.list}</i><span>Lista de combos</span></button><button class="secondary" data-next="exit"><i class="gi">${IC.exit}</i><span>Sair para o menu</span></button></div>`;
  if(page==='combos')content.innerHTML=`<h2><i class="hi">${IC.list}</i>Combos do ${CHARACTERS.find(c=>c.id===selectedCharacter)?.name||'Lutador'}</h2><p class="menuSmall">Aperte os dois botões juntos, em qualquer ordem (até 0,12 s de diferença; Pulo + R até 0,2 s), mantendo os dois pressionados.</p><div class="comboScroll"><table class="comboTable"><thead><tr><th>Golpe</th><th>Comando</th><th>Energia</th><th>Dano</th></tr></thead><tbody>${[['Soco','E',0,5],['Chute','Q',0,5],['Tiro comum','R',30,15],(selectedCharacter==='scarecrow'?['Super Soco (segurar)','E + R',5,'5 por golpe']:['Super Soco','E + R',40,selectedCharacter==='wesley'?'11 x 3':20]),['Super Chute','Q + R',40,20],...(selectedCharacter==='wesley'?[['Provocação','Trás + R',0,'+40 energia'],['Provocação','Frente + R',0,'+40 energia']]:[['Teleporte para trás','Trás + R',30,'—'],['Teleporte para frente','Frente + R',30,'—']]),['Super Tiro Teleguiado','W + R',60,30],['Parry','S + R',20,10],['Super Mega Ultra Tiro','R + R',100,selectedCharacter==='scarecrow'?60:selectedCharacter==='wesley'?((specs.mega&&specs.mega.dmg)||'?'):'3 x 25']].map(a=>`<tr>${a.map(v=>`<td>${v}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="menuStack"><button class="secondary" data-next="pause"><i class="gi">${IC.back}</i><span>Voltar à pausa</span></button><button class="primary" data-next="resume"><i class="gi">${IC.play}</i><span>Continuar</span></button></div>`;
  if(page==='home')content.innerHTML=`<div class="homeArt" aria-hidden="true"></div><div class="homeTitle">ARENA DAS ORIGENS<small>JOGO DE LUTA</small></div><button class="homeHotspot story" aria-label="Modo História" title="Modo História" data-next="story"></button><button class="homeHotspot vs" aria-label="Versus" title="Versus" data-next="mode" data-mode="vs"></button><button class="homeHotspot train" aria-label="Treino" title="Treino" data-next="mode" data-mode="train"></button><button class="homeHotspot config" aria-label="Opções" title="Opções" data-next="config"></button>`;
  if(page==='story')content.innerHTML=renderStory();
+ if(page==='vsmode')content.innerHTML=`<h2><i class="hi">${IC.duo}</i>Versus</h2><p class="menuSmall" style="text-align:center">Contra quem você quer lutar?</p><div class="menuStack"><button class="primary" data-next="character" data-vs="ai"><i class="gi">${IC.cpu}</i><span>Contra a IA</span></button><button data-next="character" data-vs="player"><i class="gi">${IC.duo}</i><span>Contra outro jogador</span></button><button class="secondary" data-next="home"><i class="gi">${IC.back}</i><span>Voltar</span></button></div><p class="menuSmall"><b>P1:</b> W A S D mover · E soco · Q chute · R especial · Shift carregar<br><b>P2:</b> ← → mover · P soco · O chute · I especial · L carregar</p>`;
  if(page==='character'||page==='opponent')renderCharacter();
  if(page==='stage')renderStage();
- if(page==='config')content.innerHTML=`<h2><i class="hi">${IC.gear}</i>Configurações</h2><div class="settingsRow"><label for="effectsToggle">Efeitos visuais de energia</label><input type="checkbox" id="effectsToggle" ${effectsEnabled?'checked':''}></div><p class="menuSmall">Controles: W/A/S/D para mover, Q chute, E soco, Shift carrega, R especial. TimeSpot: 0,5s.</p><div class="menuStack"><button class="secondary" data-next="home"><i class="gi">${IC.back}</i><span>Voltar</span></button></div>`;
+ if(page==='config')content.innerHTML=`<h2><i class="hi">${IC.gear}</i>Configurações</h2><div class="settingsRow"><label for="effectsToggle">Efeitos visuais de energia</label><input type="checkbox" id="effectsToggle" ${effectsEnabled?'checked':''}></div><p class="menuSmall">Controles P1: W/A/S/D para mover, Q chute, E soco, Shift carrega, R especial. TimeSpot: 0,5s.<br>Controles P2 (modo contra jogador): ← → mover, O chute, P soco, L carrega, I especial.</p><div class="menuStack"><button class="secondary" data-next="home"><i class="gi">${IC.back}</i><span>Voltar</span></button></div>`;
  
 }
 let effectsEnabled=true;
@@ -779,7 +798,7 @@ function renderCharacter(){
  const opp=menuPage==='opponent',sel=CHARACTERS.find(c=>c.id===(opp?dummyChar:selectedCharacter))||CHARACTERS[0];if(opp)dummyChar=sel.id;else selectedCharacter=sel.id;
  const B=6; // a arte do slot entra 6px por baixo da moldura, sem frestas nos cantos
  let h='<div class="charBg" aria-hidden="true"></div>';
- if(opp)h+=`<div class="cx-p2" style="${cxPos([138,130,168,152])}"><svg viewBox="0 0 168 152" aria-hidden="true"><path d="M3 16Q84 -4 165 16L165 112L110 118L84 150L58 118L3 112Z" fill="#3a1a0a"/><path d="M10 22Q84 6 158 22L158 104L106 110L84 138L62 110L10 104Z" fill="#3b82d6"/><path d="M10 22Q84 6 158 22L158 44Q84 30 10 44Z" fill="#6aa7ee"/><path d="M70 118L98 118L84 136Z" fill="#f5b93a"/><text x="84" y="84" text-anchor="middle" font-family="Georgia,serif" font-weight="900" font-size="54" fill="#fff1d0" stroke="#3a1a0a" stroke-width="7" paint-order="stroke">P2</text></svg></div><div class="cx-title" style="${cxPos([560,48,550,74])}">Seleção do Manequim</div>`;
+ if(opp)h+=`<div class="cx-p2" style="${cxPos([138,130,168,152])}"><svg viewBox="0 0 168 152" aria-hidden="true"><path d="M3 16Q84 -4 165 16L165 112L110 118L84 150L58 118L3 112Z" fill="#3a1a0a"/><path d="M10 22Q84 6 158 22L158 104L106 110L84 138L62 110L10 104Z" fill="#3b82d6"/><path d="M10 22Q84 6 158 22L158 44Q84 30 10 44Z" fill="#6aa7ee"/><path d="M70 118L98 118L84 136Z" fill="#f5b93a"/><text x="84" y="84" text-anchor="middle" font-family="Georgia,serif" font-weight="900" font-size="54" fill="#fff1d0" stroke="#3a1a0a" stroke-width="7" paint-order="stroke">P2</text></svg></div><div class="cx-title" style="${cxPos([560,48,550,74])}">${P2_HUMAN()?'Seleção do Jogador 2':'Seleção do Manequim'}</div>`;
  CX_SLOTS.forEach((r,i)=>{const c=CHARACTERS[charPage*CHAR_PER_PAGE+i];
   h+=c?`<div class="cx-img" style="${cxPos(r,B)}">${(c.thumb||c.art)()}</div>`:`<div class="cx-img cx-locked" style="${cxPos(r,B)}"></div>`;});
  CX_SLOTS.forEach((r,i)=>{const c=CHARACTERS[charPage*CHAR_PER_PAGE+i];
@@ -788,7 +807,7 @@ function renderCharacter(){
  h+=`<div class="cx-shadow" style="${cxPos([150,672,260,34])}"></div><div class="cx-big" style="${cxPos(CX_BIG)}">${sel.art()}</div>`;
  h+=`<div class="cx-name" style="${cxPos(CX_NAME)}">${sel.name}</div>`;
  h+=`<button class="cx-btn cx-arrow" style="${cxPos(CX_LEFT)}" data-cpage="-1" aria-label="Página anterior"></button><button class="cx-btn cx-arrow" style="${cxPos(CX_RIGHT)}" data-cpage="1" aria-label="Próxima página"></button>`;
- h+=`<button class="cx-btn cx-png cx-back" style="${cxPos(CX_BACK)}" data-next="${opp?'character':'home'}" aria-label="Voltar" title="Voltar (Esc)"></button>`;
+ h+=`<button class="cx-btn cx-png cx-back" style="${cxPos(CX_BACK)}" data-next="${opp?'character':(selectedMode==='vs'?'vsmode':'home')}" aria-label="Voltar" title="Voltar (Esc)"></button>`;
  h+=`<button class="cx-btn cx-png cx-ok" style="${cxPos(CX_OK)}" data-next="${opp?'stage':'opponent'}" aria-label="Confirmar personagem" title="Confirmar (Z)"></button>`;
  content.innerHTML=h;
 }
