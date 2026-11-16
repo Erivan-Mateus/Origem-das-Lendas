@@ -21,7 +21,7 @@ function scareHoldTick(){
   else stop()
  }
 }
-function hit(dmg,unparry){if(dummyMode==='none'||dummy.hp<=0||!fightLive())return;if(selectedMode==='vs'&&!unparry&&clock<(dummy.parryUntil||0)){dummyParried();return}dummy.hp=clamp(dummy.hp-dmg,0,dummyMax);dummy.flash=170;if(dummyChar==='wesley')wesleyHurtSound();if(selectedMode==='vs'){dummy.stunUntil=clock+250;if(dmg>=10)dummy.pend=null}effects.push({x:dummy.x,y:floor-85,t:350,label:'-'+dmg});if(dummy.hp===0){if(selectedMode==='vs'){endRound(0)}else{effects.push({x:dummy.x,y:floor-160,t:1000,label:'ALVO DERROTADO'});setTimeout(()=>{if(dummy.hp===0)dummy.hp=dummyMax},1200)}}}
+function hit(dmg,unparry){if(dummyMode==='none'||dummy.hp<=0||!fightLive())return;if(typeof wesleyDummyImmune==='function'&&wesleyDummyImmune()){effects.push({x:dummy.x,y:floor-175,t:450,label:'IMUNE'});return}if(selectedMode==='vs'&&!unparry&&clock<(dummy.parryUntil||0)){dummyParried();return}dummy.hp=clamp(dummy.hp-dmg,0,dummyMax);dummy.flash=170;if(dummyChar==='wesley')wesleyHurtSound();if(selectedMode==='vs'){dummy.stunUntil=clock+250;if(dmg>=10)dummy.pend=null}effects.push({x:dummy.x,y:floor-85,t:350,label:'-'+dmg});if(dummy.hp===0){if(selectedMode==='vs'){endRound(0)}else{effects.push({x:dummy.x,y:floor-160,t:1000,label:'ALVO DERROTADO'});setTimeout(()=>{if(dummy.hp===0)dummy.hp=dummyMax},1200)}}}
 function start(name){if(playerCliffFalling)return false;if(selectedCharacter==='zusk'&&action==='mega'&&clock<actionUntil)return false;if(wesUltOn())return false;let a=specs[name];if(selectedCharacter==='wesley'&&(name==='frontTeleport'||name==='backTeleport')&&a)a=wesleyTauntSpec(a);if(clock<stunUntil&&['punch','kick','shot','superPunch','superKick','superShot','mega'].includes(name))return false;if(!a||energy<a.cost||(clock<actionUntil&&!['superPunch','superKick','superShot','parry','frontTeleport','backTeleport','mega'].includes(name)))return false;energy-=a.cost;action=name;actionUntil=clock+a.duration;if(selectedCharacter==='wesley'&&name!=='shot')wesleyStopShotSound();if(selectedCharacter==='wesley'&&name==='punch')wesleyPunchSound();if(selectedCharacter==='wesley'&&(name==='kick'||name==='superKick'))wesleyKickSound();if(name==='punch')playSnd('punch');else if(name==='kick')playSnd('kick');else if(selectedCharacter==='wesley'&&name==='superPunch')wesleySuperPunchSound();else if(selectedCharacter==='wesley'&&name==='superKick')wesleySuperKickSound();else if(name==='superPunch'||name==='superKick')playSuper();else if(selectedCharacter==='zusk'&&(name==='shot'||name==='superShot'||name==='mega'))playKi(name);else if((name==='frontTeleport'||name==='backTeleport')&&selectedCharacter!=='wesley')playTeleport();
 if(name==='frontTeleport'||name==='backTeleport'){if(selectedCharacter==='wesley'){wesleyTauntStart(name);return true}if(selectedCharacter==='zusk'&&y>=floor-1){zTpStart=clock;zTpFromX=x;actionUntil=clock+ZTP_TOTAL}const tpDir=(name==='frontTeleport'?1:-1)*face;x=clamp(x+tpDir*300,55,905);effects.push({x,y:y-95,t:420,label:'TELEPORTE'});return true}
 if(name==='shot'){const act=actionUntil;if(selectedCharacter==='wesley')wesleyShotSound();setTimeout(()=>{if(action==='shot'&&actionUntil===act){if(selectedCharacter==='wesley')wesleyFireSound();shots.push({x:x+face*100,y:y-92,vx:face*12,damage:a.dmg,size:18,life:1600,color:'#ffdc48',homing:false,spr:selectedCharacter==='zusk',dir:face})}},160);return true}
@@ -173,10 +173,10 @@ let eshots=[];
 dummy.energy=0;dummy.actionUntil=0;dummy.stunUntil=0;dummy.pend=null;
 const AI_ON=()=>!!(window.OpponentAI&&selectedMode==='vs'&&dummyMode==='attack');
 const AI_ATTACKING=['punch','kick','shot','superPunch','superKick','superShot','mega'];
-function aiHitPlayer(dmg){
+function aiHitPlayer(dmg,unparry){
   if(hp<=0||!fightLive())return;
   if(action==='mega'&&clock<actionUntil){effects.push({x,y:y-185,t:450,label:'IMUNE'});return}   // imune durante o ultimate
-  if(clock<=parryUntil){parrySuccess();hit(10);effects.push({x,y:y-175,t:550,label:'PARRY! +10'});return}
+  if(!unparry&&clock<=parryUntil){parrySuccess();hit(10);effects.push({x,y:y-175,t:550,label:'PARRY! +10'});return}
   hp=clamp(hp-dmg,0,maxHp);stunUntil=clock+500;action='';actionUntil=0;if(selectedCharacter==='wesley')wesleyHurtSound();
   if(pendingShot){clearTimeout(pendingShot);pendingShot=null}
   effects.push({x,y:y-160,t:550,label:'-'+dmg+' VIDA'});effects.push({x,y:y-185,t:500,label:'ATORDOADO'});
@@ -195,6 +195,7 @@ function aiLockEscape(){
 }
 // Parry do inimigo funcionou: cancela o golpe do jogador e devolve 10 de dano.
 function dummyParried(){
+  if(typeof wesleyDummyInterrupt==='function')wesleyDummyInterrupt();
   dummy.parryUntil=0;dummy.parryOkAt=clock;if(dummyChar==='wesley'&&typeof wesleyParrySound==='function')wesleyParrySound();
   hp=clamp(hp-10,0,maxHp);stunUntil=clock+500;action='';actionUntil=0;
   if(pendingShot){clearTimeout(pendingShot);pendingShot=null}
@@ -204,10 +205,10 @@ function dummyParried(){
 }
 function aiStep(dt){
   // tiros do P2
-  for(const s of eshots){s.x+=s.vx*dt*60;s.life-=dt*1000;
-    if(s.life>0&&fightLive()&&Math.abs(s.x-x)<s.size/2+22&&Math.abs(s.y-(y-90))<70){aiHitPlayer(s.damage);s.life=0}}
+  for(const s of eshots){if(s.homing&&hp>0){const dx=x-s.x,dy=(y-90)-s.y,d=Math.hypot(dx,dy);if(d>0){const st=Math.min(660*dt,d);s.x+=dx/d*st;s.y+=dy/d*st}}else s.x+=s.vx*dt*60;s.life-=dt*1000;
+    if(s.life>0&&fightLive()&&Math.abs(s.x-x)<s.size/2+22&&Math.abs(s.y-(y-90))<70){aiHitPlayer(s.damage);if(s.wmega){zImpacts.push({t:clock,x,y:y-90,k:2});zShake=Math.max(zShake,12)}s.life=0}}
   eshots=eshots.filter(s=>s.life>0&&s.x>0&&s.x<960);
-  if(dummy.hp<=0||!fightLive()||dummy.cliffFalling)return;
+  if(dummy.hp<=0||!fightLive()||dummy.cliffFalling){if(typeof wesleyDummyReset==='function'&&(dummy.wAct||dummy.charging))wesleyDummyReset();return}
   const AI=window.OpponentAI;
   dummy.energy=Math.min(100,dummy.energy+8*dt);
   // golpe em andamento: o dano sai no meio da animação
@@ -219,19 +220,23 @@ function aiStep(dt){
   const lk=superLock();
   if(lk&&!dummy.wasLocked){dummy.lockAt=clock+SUPER_LOCK_REACT[0]+Math.random()*(SUPER_LOCK_REACT[1]-SUPER_LOCK_REACT[0]);dummy.lockDid=Math.random()>=SUPER_LOCK_PARRY_CHANCE}
   dummy.wasLocked=lk;
+  if(lk&&typeof wesleyDummyInterrupt==='function')wesleyDummyInterrupt();
   if(lk){if(!dummy.lockDid&&clock>=dummy.lockAt){dummy.lockDid=true;aiLockEscape()}return}
   const stunned=clock<dummy.stunUntil,busy=clock<dummy.actionUntil;
+  if(dummyChar==='wesley'&&typeof wesleyDummyTick==='function'){if(stunned)wesleyDummyInterrupt();wesleyDummyTick(dt)}
   const pick=k=>({range:specs[k].range,dmg:specs[k].dmg,cost:specs[k].cost,duration:specs[k].duration});
   const s={
-    self:{x:dummy.x,hp:dummy.hp,hpMax:dummyMax,energy:dummy.energy,canAct:!stunned&&!busy,busy,stunned,facing:x>=dummy.x?1:-1,character:dummyChar},
+    self:{x:dummy.x,hp:dummy.hp,hpMax:dummyMax,energy:dummy.energy,canAct:!stunned&&!busy,busy,stunned,facing:x>=dummy.x?1:-1,character:dummyChar,charging:!!dummy.charging,zone:(typeof wesleyDummyZone==='function'?wesleyDummyZone(dummy.hp):'green')},
     enemy:{x,y,hp,hpMax:maxHp,energy,action,attacking:AI_ATTACKING.includes(action)&&clock<actionUntil,stunned:clock<stunUntil,airborne:y<floor-1,crouching:held.has('crouch'),parrying:clock<=parryUntil,facing:face,character:selectedCharacter},
-    specs:{punch:pick('punch'),kick:pick('kick'),shot:pick('shot'),parry:pick('parry')},
+    specs:{punch:pick('punch'),kick:pick('kick'),shot:pick('shot'),parry:pick('parry'),...(dummyChar==='wesley'?{superPunch:pick('superPunch'),superKick:pick('superKick'),superShot:pick('superShot'),mega:pick('mega')}:{})},
     arena:{min:55,max:905},
     round:{number:round,wins:roundWins,time:roundTime,mode:'vs'}
   };
   let r;try{r=AI.decide(s,dt)||{}}catch(e){console.error('Erro na IA:',e);r={}}
-  if(stunned||busy)return;
+  if(stunned||busy){if(dummy.charging)dummyChargeSet(false);return}
   const mv=clamp(+r.move||0,-1,1);
+  if(dummyChar==='wesley'&&r.charge&&!r.attack&&!mv){dummy.energy=Math.min(100,dummy.energy+15*dt);if(!dummy.charging)dummyChargeSet(true);return}
+  if(dummy.charging)dummyChargeSet(false);
   const oldX=dummy.x;
   if(mv){dummy.x=clamp(dummy.x+mv*200*dt,55,905);dummyCliffDropBegin();}
   if(dummyChar==='wesley' && Math.abs(dummy.x-oldX)>.1){
@@ -239,12 +244,14 @@ function aiStep(dt){
     dummy.wesleyWalkUntil=clock+130;
   }
   const n=r.attack;
+  if(dummyChar==='wesley'&&['superPunch','superKick','superShot','mega','parry'].includes(n)&&typeof wesleyDummyStart==='function'){const a=specs[n];if(a&&dummy.energy>=a.cost&&wesleyDummyStart(n))dummy.energy-=a.cost;return}
   if(n==='punch'||n==='kick'||n==='shot'){
     const a=specs[n];if(dummy.energy<a.cost)return;
     dummy.energy-=a.cost;dummy.actionUntil=clock+a.duration;if(n==='shot'&&dummyChar==='zusk')playKi('shot');if(n==='punch'||n==='kick')playSnd(n);if(n==='punch'&&dummyChar==='wesley')wesleyPunchSound();if(n==='kick'&&dummyChar==='wesley')wesleyKickSound();if(n==='shot'&&dummyChar==='wesley')wesleyShotSound();dummy.attackAnim=.32;dummy.atkName=n;
     dummy.pend={name:n,at:clock+(n==='kick'?170:n==='shot'?160:110)};
   }
 }
+function dummyChargeSet(on){dummy.charging=on;if(typeof wesleyDummyChargeSound==='function')wesleyDummyChargeSound(on&&dummyChar==='wesley')}
 let lastShotAt=-1;
 // Combo em qualquer ordem: se R já está segurado (apertado há até COMBO_WIN ms; pulo: JUMP_WIN) e a outra tecla chega agora, dispara o especial.
 // Se o tiro comum já tinha saído com esse R, a energia dele é devolvida e o especial toma o lugar.
@@ -578,7 +585,7 @@ function lifeSegs(total,id){const c=LIFE[id];let r=total;const red=Math.min(r,c[
 function resetFighterState(){playerCliffFalling=false;dummy.cliffFalling=false;dummy.cliffFallY=0;dummy.cliffFallVy=0;x=240;y=floor;vy=0;face=1;walk=0;action='';actionUntil=0;stunUntil=0;parryUntil=0;parryStartAt=-1;parryHitAt=-1;charging=false;energy=0;
   if(pendingShot){clearTimeout(pendingShot);pendingShot=null}
   scareState=0;zMegaStart=-1;zTpStart=-1;zImpacts=[];zShake=0;zDim=0;zCr=0;zChT=0;zChOut=0;
-  dummy.x=stageHazardDamage()?650:730;dummy.flash=0;dummy.attackTimer=0;dummy.attackAnim=0;shots=[];effects=[];held.clear();eshots=[];dummy.energy=0;dummy.actionUntil=0;dummy.stunUntil=0;dummy.pend=null;dummy.parryUntil=0;dummy.wasLocked=false;if(window.OpponentAI)OpponentAI.reset()}
+  dummy.x=stageHazardDamage()?650:730;dummy.flash=0;dummy.attackTimer=0;dummy.attackAnim=0;shots=[];effects=[];held.clear();eshots=[];dummy.energy=0;dummy.actionUntil=0;dummy.stunUntil=0;dummy.pend=null;dummy.parryUntil=0;dummy.wasLocked=false;if(typeof wesleyDummyReset==='function')wesleyDummyReset();if(window.OpponentAI)OpponentAI.reset()}
 function showBanner(text,dur){banner={text,t:dur,dur}}
 function endRound(w,text){if(roundState!=='fight')return;roundState='ko';rsTimer=1.7;roundWinner=w;if(w>=0)roundWins[w]++;showBanner(text||'K.O.',99);shots=[];eshots=[];dummy.pend=null;held.clear()}
 function nextRound(){if(roundWinner>=0)round++;resetFighterState();hp=maxHp;dummy.hp=dummyMax;roundTime=99;roundState='intro';rsTimer=1.6;showBanner('ROUND '+round,1.6)}
@@ -689,7 +696,7 @@ function drawDummyChar(){
  if(!dummy.cliffFalling){g.save();g.fillStyle='rgba(16,24,39,.42)';g.beginPath();g.ellipse(Math.round(dummy.x),floor+3,36,6,0,0,Math.PI*2);g.fill();g.restore();}
  g.save();g.translate(Math.round(dummy.x),floor+(dummy.cliffFallY||0));g.scale(fc,1);g.translate(lunge,0);g.rotate(tilt);g.scale(1,breathe);
  if(flash){g.shadowColor='#ffe58d';g.shadowBlur=18}
- const s=dummyChar==='wesley'?WES.s:ZK.s;const wsd=dummyChar==='wesley'?wesleyDummySprite(flash,atk,p,hq):null;if(wsd)drawWesleySheet(g,wsd[0],wsd[1]);else g.drawImage(img,(fi%cols)*cw,Math.floor(fi/cols)*ch,cw,ch,-ax*s,-base*s,cw*s,ch*s);
+ const s=dummyChar==='wesley'?WES.s:ZK.s;const wsd=dummyChar==='wesley'?wesleyDummySprite(flash,atk,p,hq):null;if(wsd)drawWesleySheet(g,wsd[0],wsd[1]);else g.drawImage(img,(fi%cols)*cw,Math.floor(fi/cols)*ch,cw,ch,-ax*s,-base*s,cw*s,ch*s);if(dummyChar==='wesley'&&typeof wesleyDummyDrawExtra==='function')wesleyDummyDrawExtra(g);
  g.restore();
  g.save();g.font='12px monospace';g.textAlign='center';
  
@@ -699,10 +706,10 @@ function drawDummyChar(){
 function draw(){g.setTransform(canvas.width/960,0,0,canvas.height/540,0,0);zuskMegaTick();if(zShake>.4){g.translate((Math.random()-.5)*zShake*2,(Math.random()-.5)*zShake*2);zShake*=.85}else zShake=0;if(stageImage.complete&&stageImage.naturalWidth)g.drawImage(stageImage,0,0,960,540);else{g.fillStyle='#c5a46a';g.fillRect(0,0,960,540)}
 drawMegaDim();drawCombatHUD();
 // Alvo de treino, não é um segundo personagem jogável
-if(dummyMode!=='none')drawDummyChar();
+if(dummyMode!=='none'){drawDummyChar();if(typeof wesleyDummyDrawStand==='function')wesleyDummyDrawStand(g)}
 drawPlayer();if(typeof drawWesleyStand==='function')drawWesleyStand(g);drawZuskBeam();
 for(let shot of shots){if(shot.wmega){g.save();const gr=g.createRadialGradient(shot.x,shot.y,2,shot.x,shot.y,shot.size);gr.addColorStop(0,'#fff');gr.addColorStop(.4,'#ffe38a');gr.addColorStop(1,'rgba(255,170,40,0)');g.fillStyle=gr;g.beginPath();g.arc(shot.x,shot.y,shot.size,0,Math.PI*2);g.fill();g.restore();continue}if(shot.spr&&zuskOrb.complete&&zuskOrb.naturalWidth){const age=1600-shot.life,fi=age<140?Math.min(3,Math.floor(age/35)):[5,6,7,6][Math.floor((age-140)/55)%4],sc=.17+.13*Math.min(1,age/160);g.save();g.translate(Math.round(shot.x),Math.round(shot.y));g.scale(shot.dir,1);g.drawImage(zuskOrb,fi*ZKO.pw,0,ZKO.pw,ZKO.ph,-ZKO.ax*sc,-ZKO.ay*sc,ZKO.pw*sc,ZKO.ph*sc);g.restore();continue}g.fillStyle=shot.color;g.fillRect(shot.x-shot.size/2,shot.y-shot.size/2,shot.size,shot.size);g.fillStyle='#fff';g.fillRect(shot.x-shot.size/4,shot.y-shot.size/4,shot.size/2,shot.size/2)}
-for(const s of eshots){g.save();g.fillStyle='#ff6b5a';g.strokeStyle='#fff';g.lineWidth=3;g.beginPath();g.arc(Math.round(s.x),Math.round(s.y),11,0,7);g.fill();g.stroke();g.restore()}for(let e of effects){if(!/^[-+]/.test(e.label))continue;g.fillStyle='#fff1aa';g.font='bold 17px monospace';g.fillText(e.label,e.x,e.y)}
+for(const s of eshots){g.save();if(s.wmega){const gr=g.createRadialGradient(s.x,s.y,2,s.x,s.y,s.size);gr.addColorStop(0,'#fff');gr.addColorStop(.4,'#ffe38a');gr.addColorStop(1,'rgba(255,170,40,0)');g.fillStyle=gr;g.beginPath();g.arc(s.x,s.y,s.size,0,7);g.fill()}else{g.fillStyle=s.homing?'#76dcff':'#ff6b5a';g.strokeStyle='#fff';g.lineWidth=3;g.beginPath();g.arc(Math.round(s.x),Math.round(s.y),s.homing?15:11,0,7);g.fill();g.stroke()}g.restore()}for(let e of effects){if(!/^[-+]/.test(e.label))continue;g.fillStyle='#fff1aa';g.font='bold 17px monospace';g.fillText(e.label,e.x,e.y)}
 drawImpactFrames();
 }
 function tick(now){if(menuOpen||matchOver){auraUpdate(false);last=now;requestAnimationFrame(tick);return;}if(!last)last=now;let dt=Math.min((now-last)/1000,.05);last=now;clock=now;roundUpdate(dt);let dir=fightLive()&&!playerCliffFalling&&!(selectedCharacter==='zusk'&&action==='mega'&&clock<actionUntil)&&!superLock()&&!wesUltOn()?(held.has('right')?1:0)-(held.has('left')?1:0):0;let moving=dir!==0&&!held.has('crouch');if(moving){x=clamp(x+dir*250*dt,55,905);face=dir;walk+=dt*11}else walk=0;
@@ -715,7 +722,7 @@ playerCliffDropTick();charging=held.has('charge')&&!moving&&fightLive()&&!(selec
 let menuOpen=true,selectedMode='train',selectedCharacter='zusk',selectedStage='forest',menuPage='home';
 const overlay=document.getElementById('menuOverlay'),content=document.getElementById('menuContent');
 let soundOn=true,pausedAt=0;
-function resumeGame(){if(pausedAt){const elapsed=performance.now()-pausedAt;actionUntil+=elapsed;parryUntil+=elapsed;if(dummy.parryUntil)dummy.parryUntil+=elapsed;if(parryStartAt>=0)parryStartAt+=elapsed;if(parryHitAt>=0)parryHitAt+=elapsed;if(zMegaStart>=0)zMegaStart+=elapsed;if(typeof wesleyUlt2Shift==='function')wesleyUlt2Shift(elapsed);if(zTpStart>=0)zTpStart+=elapsed;zImpacts.forEach(m=>m.t+=elapsed);pausedAt=0;}menuOpen=false;overlay.classList.add('hidden');held.clear();last=0;}
+function resumeGame(){if(pausedAt){const elapsed=performance.now()-pausedAt;actionUntil+=elapsed;parryUntil+=elapsed;if(dummy.parryUntil)dummy.parryUntil+=elapsed;if(parryStartAt>=0)parryStartAt+=elapsed;if(parryHitAt>=0)parryHitAt+=elapsed;if(zMegaStart>=0)zMegaStart+=elapsed;if(typeof wesleyUlt2Shift==='function')wesleyUlt2Shift(elapsed);if(typeof wesleyDummyShift==='function')wesleyDummyShift(elapsed);if(zTpStart>=0)zTpStart+=elapsed;zImpacts.forEach(m=>m.t+=elapsed);pausedAt=0;}menuOpen=false;overlay.classList.add('hidden');held.clear();last=0;}
 function openPause(){if(matchOver)return;if(!window.hasStarted){showMenu('home');return;}pausedAt=performance.now();showMenu('pause');}
 const IC=(()=>{const o='<svg viewBox="0 0 24 24" fill="#ffd34a" stroke="#5a2a10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round">',c='</svg>';return{
  play:o+'<path d="M7 4.5v15l12-7.5z"/>'+c,
