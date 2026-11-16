@@ -374,7 +374,11 @@ function _wesPlaySound(k) {
   tryPlay(0);
 }
 function wesleyParrySound() { _wesPlaySound('parry'); } // "olé" do parry
-function wesleyHurtSound() { _wesPlaySound('hurt'); }
+// Durante qualquer ultimate (do jogador ou do inimigo) só tocam os sons do ultimate: o som de dano do Wesley fica mudo.
+function _wesUltimateRunning() {
+  return (action === 'mega' && clock < actionUntil) || (typeof _wd !== 'undefined' && _wd.act === 'mega' && clock < dummy.actionUntil);
+}
+function wesleyHurtSound() { if (_wesUltimateRunning()) return; _wesPlaySound('hurt'); }
 function wesleyPunchSound() { _wesPlaySound('punch'); }
 function wesleySuperKickSound() { // áudio do especial R+Chute
   _wesPlaySound('bat');
