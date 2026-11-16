@@ -327,6 +327,7 @@ function wesleyPlayerSprite() {
 // Oponente Wesley (manequim/IA): dano (flash) e ataques de soco/chute.
 function wesleyDummySprite(flash, atk, p, hq) {
   if (flash && _wesOk(WES_HURT)) return [WES_HURT, _wesPick(WES_SEQ.hurt, hq)];
+  const ws = _wdSprite(); if (ws) return ws; // golpes especiais / carregar energia da IA
   if (_wesOk(WES_PARRY)) { // parry do inimigo: janela (1-5) e, se aparar, comemoração (6-9)
     const ok = clock - (dummy.parryOkAt || -99999);
     if (ok >= 0 && ok < 780) return [WES_PARRY, 6 + Math.min(3, Math.floor(ok / 780 * 4))];
@@ -351,8 +352,8 @@ const _wesSnd = {
   punch: { list: [WESLEY_PUNCH_SND, 'audio/weslei_soco.mp3', 'audio/wesley_soco.mp3'], gap: 120, at: -999, ok: null },
   spunch: { list: [WESLEY_SPUNCH_SND, 'audio/socos-socos-socos.mp3'], gap: 300, at: -999, ok: null },
   parry: { list: [WESLEY_PARRY_SND, 'audio/olé-wesley.mp3', 'audio/ole_wesley.mp3'], gap: 300, at: -999, ok: null },
-  ult2bgm: { list: [WESLEY_ULT2_BGM], gap: 300, at: -999, ok: null, vol: .6 }, // vol: volume da música (0 a 1), abaixo da voz
-  ult2: { list: [WESLEY_ULT2_SND], gap: 300, at: -999, ok: null, rate: 0.75 }, // 0,75 = áudio de 6 s dura 8 s; refinado abaixo pela duração real
+  ult2bgm: { list: [WESLEY_ULT2_BGM], gap: 300, at: -999, ok: null, vol: .66 }, // vol: volume da música (0 a 1), abaixo da voz
+  ult2: { list: [WESLEY_ULT2_SND], gap: 300, at: -999, ok: null, vol: 1, rate: 0.75 }, // 0,75 = áudio de 6 s dura 8 s; refinado abaixo pela duração real
   taunt: { list: [WESLEY_TAUNT_SND, 'audio/wesley_provocacao.mp3'], gap: 300, at: -999, ok: null }
 };
 function _wesPlaySound(k) {
@@ -516,3 +517,150 @@ function wesleyStopTauntSound() { const a = _wesSnd.taunt.cur; if (a && !a.pause
   };
   tryLoad(0);
 })();
+
+// =====================================================================
+// ===== WESLEY COMO INIMIGO (P2 controlado pela IA) ====================
+// A decisão fica em ia-oponente.js (WesleyAI). Aqui ficam os GOLPES ESPECIAIS do inimigo: super soco (11 socos),
+// super chute (taco), super tiro teleguiado, parry, ultimate (mega tiro / Dama Rosa) e carregar energia.
+// O jogo.js chama: wesleyDummyStart / Tick / Interrupt / Reset / Shift / Immune / Zone / DrawExtra / DrawStand.
+// Os sons usam instâncias de áudio próprias, para não serem cortados pelo Wesley do jogador (espelho).
+// =====================================================================
+const _wd = { act: null, t0: 0, tok: 0, ev: [], ult2: false, sx: 0, sf: 1, sHits: 0, sLast: 0, chOn: false, chT: 0, chRel: -99999 };
+const _wdAud = {};
+function _wdStop(k) { const a = _wdAud[k]; if (a && !a.paused) { try { a.pause(); a.currentTime = 0; } catch (e) {} } }
+function _wdPlay(k) {
+  const st = _wesSnd[k], src = st && (st.ok || st.list[0]); if (!src) return;
+  _wdStop(k);
+  const a = new Audio(src); a.volume = st.vol === undefined ? 1 : st.vol; if (st.rate) a.playbackRate = st.rate;
+  _wdAud[k] = a; const pr = a.play(); if (pr && pr.catch) pr.catch(() => {});
+}
+// Faixa de vida do inimigo: 'green' | 'yellow' | 'red' (mesmas faixas do jogador).
+function wesleyDummyZone(h) {
+  const c = (typeof LIFE !== 'undefined' && LIFE.wesley) || [20, 30, 150];
+  return h > c[1] + c[2] ? 'green' : h > c[2] ? 'yellow' : 'red';
+}
+function wesleyDummyImmune() { return _wd.act === 'mega' && clock < dummy.actionUntil; } // imune durante o ultimate
+function wesleyDummyCancel() {
+  const was = _wd.act;
+  _wd.act = null; _wd.ult2 = false; _wd.ev = []; _wd.tok++; dummy.wAct = null;
+  ['spunch', 'bat', 'shot', 'fire', 'ult2', 'ult2bgm'].forEach(_wdStop);
+  if (was) dummy.actionUntil = 0;
+}
+function wesleyDummyInterrupt() { if (_wd.act && !wesleyDummyImmune()) wesleyDummyCancel(); } // levou dano / parry: golpe cai (ultimate não cai)
+function wesleyDummyReset() { wesleyDummyCancel(); wesleyDummyChargeSound(false); dummy.charging = false; _wd.chRel = -99999; }
+function wesleyDummyShift(e) { _wd.t0 += e; _wd.sLast += e; _wd.chT += e; _wd.ev.forEach(v => v.at += e); if (_wd.act) dummy.actionUntil += e; }
+
+function wesleyDummyStart(name) {
+  const a = specs[name]; if (!a || clock < dummy.actionUntil) return false;
+  wesleyDummyCancel();
+  const d = () => (x >= dummy.x ? 1 : -1), reach = r => Math.abs(dummy.x - x) <= r + 8 && Math.abs(y - floor) < 80;
+  const fire = (at, fn) => _wd.ev.push({ at: clock + at, fn, tok: _wd.tok });
+  if (name === 'parry') { // mesma janela do parry do jogador; o sprite usa dummy.parryUntil
+    dummy.parryUntil = clock + PARRY_WIN; dummy.actionUntil = clock + PARRY_WIN; dummy.pend = null;
+    effects.push({ x: dummy.x, y: floor - 145, t: 480, label: 'PARRY ATIVO' });
+    return true;
+  }
+  _wd.act = name; _wd.t0 = clock; dummy.wAct = name; dummy.pend = null;
+  if (name === 'superPunch') {
+    dummy.actionUntil = clock + WES_SPUNCH_MS; _wdPlay('spunch');
+    wesleySuperPunchHitTimes().forEach(t => fire(t, () => { if (reach(a.range)) aiHitPlayer(WES_SPUNCH_DMG); }));
+  } else if (name === 'superKick') {
+    const dur = WES_BAT_SND_MS > 0 ? WES_BAT_SND_MS : a.duration;
+    dummy.actionUntil = clock + dur; _wdPlay('bat'); _wdPlay('punch');
+    fire(wesleyBatHitMs(), () => { if (reach(a.range)) aiHitPlayer(a.dmg); });
+  } else if (name === 'superShot') {
+    dummy.actionUntil = clock + specs.shot.duration; _wdPlay('shot');
+    fire(160, () => { _wdPlay('fire'); eshots.push({ x: dummy.x + d() * 100, y: floor - 92, vx: d() * 12, damage: a.dmg, size: 32, life: 1600, homing: true }); });
+  } else if (name === 'mega') {
+    if (wesleyDummyZone(dummy.hp) !== 'red') { // vida verde/amarela: mega tiro de arma
+      dummy.actionUntil = clock + WES_MEGA_T.total; _wdPlay('shot');
+      fire(WES_MEGA_T.fire, () => {
+        _wdPlay('fire');
+        eshots.push({ x: dummy.x + d() * 100, y: floor - 92, vx: d() * 10, damage: a.dmg, size: 70, life: 1600, wmega: true });
+        zImpacts.push({ t: clock, x: dummy.x + d() * 90, y: floor - 92, k: 0 }); zShake = Math.max(zShake, 10);
+      });
+    } else { // vida vermelha: ultimate 2 — Dama Rosa
+      _wd.ult2 = true; _wd.sHits = 0; _wd.sf = d(); _wd.sLast = clock;
+      _wd.sx = clamp(dummy.x + d() * (70 + WES_STAND_GAP), 55, 905);
+      dummy.actionUntil = clock + _wesUlt2Total(); _wdPlay('ult2'); _wdPlay('ult2bgm');
+    }
+  } else { wesleyDummyCancel(); return false; }
+  return true;
+}
+// Todo quadro (chamado pelo aiStep): dispara os eventos agendados e, no ultimate 2, move a Dama Rosa e aplica os 20 socos.
+function wesleyDummyTick(dt) {
+  if (!_wd.act) return;
+  for (const e of _wd.ev.slice()) if (clock >= e.at) { _wd.ev.splice(_wd.ev.indexOf(e), 1); if (e.tok === _wd.tok) e.fn(); }
+  if (_wd.act === 'mega' && _wd.ult2) {
+    const t = clock - _wd.t0 - WES_ULT2_START;
+    if (t >= 0) {
+      const step = WES_STAND_SPEED * Math.min(50, Math.max(0, clock - _wd.sLast)) / 1000; _wd.sLast = clock;
+      const dd = x >= dummy.x ? 1 : -1;
+      let target = x - dd * 95;
+      if ((target - dummy.x) * dd < 70 + WES_STAND_GAP) target = dummy.x + dd * (70 + WES_STAND_GAP);
+      target = clamp(target, 55, 905);
+      _wd.sf = dd; _wd.sx += clamp(target - _wd.sx, -step, step);
+      const u = t - WES_STAND_APPEAR;
+      while (_wd.sHits < WES_STAND_HITS && u >= _wd.sHits * WES_STAND_PUNCH_MS + WES_STAND_PUNCH_MS * .5) {
+        const i = _wd.sHits++;
+        playSnd('punch', WES_STAND_SND_VOL);
+        if (Math.abs(x - _wd.sx) <= WES_STAND_RANGE) {
+          aiHitPlayer(_wesStandDmg(i), true); // não pode ser aparado
+          zShake = Math.max(zShake, i === WES_STAND_HITS - 1 ? 12 : 3);
+          if (i === WES_STAND_HITS - 1) zImpacts.push({ t: clock, x, y: floor - 90, k: 2 });
+        }
+      }
+    }
+  }
+  if (clock >= dummy.actionUntil) { const was = _wd.act; wesleyDummyCancel(); dummy.actionUntil = 0; if (was) { /* acabou naturalmente */ } }
+}
+// Carregar energia (som em loop só do inimigo, mais baixo).
+let _wdChAud = null;
+function wesleyDummyChargeSound(on) {
+  if (on && !_wd.chOn) { _wd.chOn = true; _wd.chT = clock; }
+  if (!on && _wd.chOn) { _wd.chOn = false; _wd.chRel = clock; }
+  if (on) {
+    if (!_wdChAud) { _wdChAud = new Audio(WESLEY_CHARGE_SND); _wdChAud.loop = true; _wdChAud.volume = .45; }
+    if (_wdChAud.paused) { const pr = _wdChAud.play(); if (pr && pr.catch) pr.catch(() => {}); }
+  } else if (_wdChAud && !_wdChAud.paused) { try { _wdChAud.pause(); _wdChAud.currentTime = 0; } catch (e) {} }
+}
+// Sprite do inimigo: [folha, quadro] ou null (aí o jogo usa soco/chute/parado como antes).
+function _wdSprite() {
+  const ms = clock - _wd.t0;
+  if (_wd.act && clock < dummy.actionUntil) {
+    if (_wd.act === 'superPunch' && _wesOk(WES_SPUNCH)) return [WES_SPUNCH, _wesSuperPunchFrame(ms)];
+    if (_wd.act === 'superKick' && _wesOk(WES_BAT)) return [WES_BAT, _wesBatFrame(ms)];
+    if (_wd.act === 'superShot' && _wesOk(WES_SPECIAL)) return [WES_SPECIAL, _wesSpecialFrame(ms)];
+    if (_wd.act === 'mega') {
+      if (_wd.ult2 && _wesOk(WES_ULT2)) return [WES_ULT2, _wesUlt2Frame(ms)];
+      if (!_wd.ult2 && _wesOk(WES_SPECIAL)) return [WES_SPECIAL, _wesMegaFrame(ms)];
+    }
+  }
+  if (_wesOk(WES_PARRY)) {
+    const ok = clock - (dummy.parryOkAt || -99999);
+    if (ok >= 0 && ok < 780) return [WES_PARRY, 6 + Math.min(3, Math.floor(ok / 780 * 4))];
+    if (dummy.parryUntil > clock) return [WES_PARRY, 1 + Math.min(4, Math.floor((1 - (dummy.parryUntil - clock) / PARRY_WIN) * 5))];
+  }
+  if (_wesOk(WES_CHARGE)) {
+    if (dummy.charging) {
+      const t = clock - _wd.chT, n = WES_CHARGE_INTRO.length * WES_CHARGE_STEP;
+      return [WES_CHARGE, t < n ? WES_CHARGE_INTRO[Math.floor(t / WES_CHARGE_STEP)]
+        : WES_CHARGE_LOOP[Math.floor((t - n) / WES_CHARGE_LOOP_STEP) % WES_CHARGE_LOOP.length]];
+    }
+    const r = clock - _wd.chRel;
+    if (r >= 0 && r < WES_CHARGE_OUT.length * WES_CHARGE_OUT_STEP) return [WES_CHARGE, WES_CHARGE_OUT[Math.floor(r / WES_CHARGE_OUT_STEP)]];
+  }
+  return null;
+}
+function wesleyDummyDrawExtra(g) { if (_wd.act === 'superKick' && clock < dummy.actionUntil) drawWesleyBatFlight(g, clock - _wd.t0); } // taco voando
+function wesleyDummyDrawStand(g) { // Dama Rosa do inimigo
+  if (!(_wd.act === 'mega' && _wd.ult2) || !_wesOk(WES_STAND)) return;
+  const t = clock - _wd.t0 - WES_ULT2_START; if (t < 0 || t > WES_STAND_MS) return;
+  const al = Math.max(0, Math.min(1, t / 300, (WES_STAND_MS - t) / 400));
+  g.save(); g.globalAlpha = al;
+  g.fillStyle = 'rgba(16,24,39,.42)'; g.beginPath(); g.ellipse(Math.round(_wd.sx), floor + 3, 34, 6, 0, 0, Math.PI * 2); g.fill();
+  g.translate(Math.round(_wd.sx), floor); g.scale(_wd.sf, 1);
+  g.shadowColor = '#ff5ad8'; g.shadowBlur = 20;
+  drawWesleySheet(g, WES_STAND, _wesStandFrame(t));
+  g.restore();
+}
