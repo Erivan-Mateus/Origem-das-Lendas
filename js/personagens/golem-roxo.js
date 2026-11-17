@@ -5,7 +5,9 @@ const golemImg=new Image();golemImg.src=GOLEM_SPRITE;
 const golemPortrait=new Image();golemPortrait.src=GOLEM_FACE;
 const GOLEM_H=340;          // altura na tela (px do canvas 960x540)
 const GOLEM_REACH=45;       // alcance extra dos golpes
-const GOLEM_DMG=2;          // multiplicador de dano
+const GOLEM_DMG=2;          // multiplicador de dano na primeira luta e nos modos livres
+// Após a ressurreição, cada soco/martelada que acertar causa exatamente 50 de dano.
+function golemAttackDamage(base){return window.storyBossPhase===2?50:base*GOLEM_DMG}
 const GOLEM_SPEED=110;
 // Animação da martelada (5 quadros fornecidos pelo autor: preparação, erguer, impacto e recuperação).
 const GOLEM_HAMMER_DURATION=1.05; // segundos, com colisão no quadro de impacto

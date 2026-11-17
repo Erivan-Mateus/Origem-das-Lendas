@@ -4,7 +4,7 @@ const STAGE_PER_PAGE=6,STAGE_PAGES=Math.max(1,Math.ceil(STAGES.length/STAGE_PER_
 // Retângulos (x,y,largura,altura) em pixels da arte 1920x1080, medidos nas janelas transparentes.
 const SX_SLOTS=[[137,227,352,200],[543,227,353,200],[137,477,353,191],[544,477,352,191],[138,716,352,179],[544,716,353,179]];
 const SX_PREVIEW=[986,218,810,449],SX_NAME=[1128,653,524,75],SX_DESC=[1005,752,780,98];
-const SX_DOTS=[[890,989],[939,989],[987,989]],SX_BACK=[60,922,317,124],SX_OK=[1480,922,378,124];
+const SX_DOTS=[[890,989],[939,989],[987,989]],SX_ARROW_PREV=[760,947,88,88],SX_ARROW_NEXT=[1028,947,88,88],SX_BACK=[60,922,317,124],SX_OK=[1480,922,378,124];
 
 let stagePage=0;
 // O precipício está NA TERRA do cenário, não na borda lateral da tela.
@@ -66,6 +66,9 @@ function renderStage(){
       :`<div class="sx-hit sx-locked" style="${sxPos(r)}"><span class="sx-label">Em breve</span></div>`;});
  h+=`<div class="sx-name" style="${sxPos(SX_NAME)}">${sel.name}</div><div class="sx-desc" style="${sxPos(SX_DESC)}">${sel.desc}</div>`;
  SX_DOTS.slice(0,Math.min(SX_DOTS.length,STAGE_PAGES)).forEach((d,i)=>{h+=`<button class="sx-dot${i===stagePage?' on':''}" style="${sxPos([d[0]-20,d[1]-20,40,40])}" data-dot="${i}" aria-label="Página ${i+1}" aria-current="${i===stagePage}"></button>`;});
+ // Setas visíveis para alternar as páginas, inclusive em dispositivos de toque.
+ h+=`<button type="button" class="sx-arrow" style="${sxPos(SX_ARROW_PREV)}" data-stage-page="prev" aria-label="Página anterior de mapas" title="Mapas anteriores" ${stagePage===0?'disabled':''}>◀</button>`;
+ h+=`<button type="button" class="sx-arrow" style="${sxPos(SX_ARROW_NEXT)}" data-stage-page="next" aria-label="Próxima página de mapas" title="Próximos mapas" ${stagePage===STAGE_PAGES-1?'disabled':''}>▶</button>`;
  h+=`<button class="sx-btn" style="${sxPos(SX_BACK)}" data-next="opponent" aria-label="Voltar à seleção do manequim" title="Voltar"></button>`;
  h+=`<button class="sx-btn" style="${sxPos(SX_OK)}" data-next="play" aria-label="Confirmar mapa e iniciar partida" title="Confirmar"></button>`;
  content.innerHTML=h;
@@ -77,6 +80,8 @@ content.addEventListener('click',e=>{
  if(!menuOpen||menuPage!=='stage')return;
  const slot=e.target.closest('button.sx-hit[data-slot]');
  if(slot){selectedStage=slot.dataset.slot;renderStage();return}
+ const arrow=e.target.closest('button.sx-arrow[data-stage-page]');
+ if(arrow&&!arrow.disabled){stagePage=Math.max(0,Math.min(STAGE_PAGES-1,stagePage+(arrow.dataset.stagePage==='next'?1:-1)));renderStage();return}
  const dot=e.target.closest('button.sx-dot[data-dot]');
  if(dot){stagePage=+dot.dataset.dot;renderStage()}
 });
@@ -117,7 +122,7 @@ function startSelectedGame(){
   if(!characterUnlocked(selectedCharacter))selectedCharacter='zusk';
   if(!characterUnlocked(dummyChar))dummyChar='zusk';
  }
- applySelectedStage();applyCharacterSpecs();pausedAt=0;window.hasStarted=true;dummyMode=selectedMode==='vs'?'attack':'idle';document.getElementById('dummyMode').value=dummyMode;x=240;y=floor;vy=0;face=1;refillLife();energy=0;roundTime=99;roundWins=[0,0];round=1;roundWinner=-1;hideEndOverlay();resetFighterState();dummy.flash=0;dummy.attackTimer=0;dummy.attackAnim=0;shots=[];effects=[];held.clear();menuOpen=false;overlay.classList.add('hidden');if(selectedMode==='vs'){roundState='intro';rsTimer=1.6;showBanner('ROUND 1',1.6)}else{roundState='fight';banner.t=0}}
+ applySelectedStage();applyCharacterSpecs();pausedAt=0;window.hasStarted=true;document.body.classList.toggle('pvp2',P2_HUMAN());dummyMode=selectedMode==='vs'?'attack':'idle';document.getElementById('dummyMode').value=dummyMode;x=240;y=floor;vy=0;face=1;refillLife();energy=0;roundTime=99;roundWins=[0,0];round=1;roundWinner=-1;hideEndOverlay();resetFighterState();dummy.flash=0;dummy.attackTimer=0;dummy.attackAnim=0;shots=[];effects=[];held.clear();menuOpen=false;overlay.classList.add('hidden');if(selectedMode==='vs'){roundState='intro';rsTimer=1.6;showBanner('ROUND 1',1.6)}else{roundState='fight';banner.t=0}}
 // Botões da tela de fim de partida: Recomeçar / Escolher personagens / Menu
 document.getElementById('endOverlay').addEventListener('click',e=>{const b=e.target.closest('[data-end]');if(!b)return;const a=b.dataset.end;
   if(a==='restart'){if(window.storyRetryBattle&&storyRetryBattle())return;startSelectedGame();return}

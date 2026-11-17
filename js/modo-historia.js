@@ -23,7 +23,10 @@ const FALANTES={
  golem:{nome:'GOLEM ROXO',retrato:'personagens/golem-roxo/retrato.webp',ancora:'golem',topo:3},
  espantalho:{nome:'ESPANTALHO',retrato:'personagens/espantalho/retrato.webp',ancora:'scarecrow',topo:6},
  wesley:{nome:'WESLEY MAFIOSO',retrato:'personagens/wesley-mafioso/retrato.webp',ancora:'wesley',topo:4},
- voz:{nome:'VOZ AO LONGE',retrato:null,ancora:'wesley',topo:8}
+ voz:{nome:'VOZ AO LONGE',retrato:null,ancora:'wesley',topo:8},
+ gogo:{nome:'GOGOGOLAIAFI',retrato:'personagens/gogogolaiafi/retrato.png',ancora:'gogo',topo:2},
+ // Personagem reservado para o Capítulo 4. Não é exibida em nenhuma cena do Capítulo 3.
+ gostosa:{nome:'GOSTOSA',retrato:'personagens/gostosa/retrato.png',ancora:'gostosa',topo:8}
 };
 const FASES=[
  {id:1,palco:'cliff-edge',inicio:{x:330,face:1},passos:[
@@ -87,6 +90,102 @@ const FASES=[
   {t:'titulo',texto:'DERROTA · TENTE NOVAMENTE'},
   {t:'retomar',oponente:'wesley'}
  ]}
+ ,{id:3,palco:'city-normal',inicio:{x:175,face:1},passos:[
+  {t:'titulo',texto:'CAPÍTULO 3 · CIDADE DA ZENGA'},
+  {t:'fala',quem:'zusk',texto:'finalmente chegamos nessa porra'},
+  {t:'fala',quem:'espantalho',texto:'cidade bonitammmmm'},
+  {t:'fala',quem:'wesley',texto:'BEM VINDOS A CIDADE DA ZENGA CARALHO'},
+  {t:'entradaGogo',de:1020,ate:745,vel:370},
+  {t:'fala',quem:'gogo',texto:'QUEM COMEU MINHA TORRADAAAAAAAAAAAA'},
+  {t:'fala',quem:'zusk',texto:'que porra é essa'},
+  {t:'fala',quem:'gogo',texto:'FOI VOCÊ?????'},
+  {t:'fala',quem:'zusk',texto:'eu nem te conheço desgraça'},
+  {t:'fala',quem:'gogo',texto:'MINHA TORRADA SUMIU'},
+  {t:'fala',quem:'espantalho',texto:'que tristeeeeeemmmmm'},
+  {t:'fala',quem:'wesley',texto:'KKKKKKKKKKKKKKKKKKKKKK'},
+  {t:'fala',quem:'gogo',texto:'EU VOU MATAR TODO MUNDO ATÉ ACHAR MINHA TORRADA'},
+  {t:'fala',quem:'zusk',texto:'PORRA MAS É SÓ UMA TORRADA'},
+  {t:'fala',quem:'gogo',texto:'SÓ UMA TORRADA?????????'},
+  {t:'fala',quem:'zusk',texto:'ih fudeu'},
+  {t:'luta',oponente:'gogo',lutador:'zusk',oponenteX:730},
+  {t:'fala',quem:'zusk',texto:'pronto vai comprar outra torrada seu doente'},
+  {t:'fala',quem:'gogo',texto:'...'},
+  {t:'fala',quem:'gogo',texto:'minha...'},
+  {t:'fala',quem:'zusk',texto:'hm?'},
+  {t:'fala',quem:'gogo',texto:'MINHA TORRADAAAAAAAAAAAAA'},
+  {t:'reviverGogo',seg:1.8},
+  {t:'fala',quem:'gogo',texto:'GOGOGOLAIAFI EM FÚRIAAAAAAAAA'},
+  {t:'fala',quem:'zusk',texto:'CARALHO NÃO É POSSÍVEL'},
+  {t:'furiaUltimate',alvo:'zusk',seg:2.6},
+  {t:'fala',quem:'zusk',texto:'AAAAAAAAAAAAAAAA'},
+  {t:'fala',quem:'espantalho',texto:'ZUSKMMMMM'},
+  {t:'fala',quem:'wesley',texto:'KKKKKKKKKKKKK O CARA MORREU POR CAUSA DE PÃO'},
+  {t:'trocar',lutador:'scarecrow'},
+  {t:'fala',quem:'espantalho',texto:'moçoooooommmm'},
+  {t:'fala',quem:'gogo',texto:'O QUE VOCÊ QUER'},
+  {t:'fala',quem:'espantalho',texto:'posso te dar outra torradammmmm'},
+  {t:'fala',quem:'gogo',texto:'NÃO É A MESMA TORRADA'},
+  {t:'fala',quem:'espantalho',texto:'mas é torradammmmm'},
+  {t:'fala',quem:'gogo',texto:'VOCÊ NÃO ENTENDE'},
+  {t:'fala',quem:'espantalho',texto:'entendommmmm'},
+  {t:'fala',quem:'gogo',texto:'NÃO ENTENDE'},
+  {t:'fala',quem:'espantalho',texto:'entendommmmm'},
+  {t:'fala',quem:'gogo',texto:'AAAAAAAAAAAAAAAAA'},
+  {t:'luta',oponente:'gogo',lutador:'scarecrow',oponenteX:730},
+  {t:'fala',quem:'espantalho',texto:'ganheimmmmm'},
+  {t:'fala',quem:'gogo',texto:'...'},
+  {t:'fala',quem:'espantalho',texto:'tudo bemmmmm?'},
+  {t:'fala',quem:'gogo',texto:'QUEM...'},
+  {t:'fala',quem:'espantalho',texto:'ihmmmm'},
+  {t:'fala',quem:'gogo',texto:'COMEU...'},
+  {t:'fala',quem:'espantalho',texto:'nãooooooommmm'},
+  {t:'fala',quem:'gogo',texto:'MINHA TORRADAAAAAAAAAAAAAAAAAAAAAAAA'},
+  {t:'reviverGogo',seg:1.8},
+  {t:'furiaUltimate',alvo:'scarecrow',seg:2.6},
+  {t:'fala',quem:'espantalho',texto:'AAAAAAAAAAAAAAMMMMMMMMM'},
+  {t:'fala',quem:'wesley',texto:'KKKKKKKKKKKKKKKKKKKKKK'},
+  {t:'fala',quem:'wesley',texto:'CARALHO O CARA É UMA TORRADEIRA COM DEPRESSÃO'},
+  {t:'trocar',lutador:'wesley'},
+  {t:'fala',quem:'wesley',texto:'Ô MEU CHARAAAA'},
+  {t:'fala',quem:'gogo',texto:'O QUE FOI AGORA'},
+  {t:'fala',quem:'wesley',texto:'TU VAI PARAR COM ESSA PUTARIA OU NÃO?'},
+  {t:'fala',quem:'gogo',texto:'SÓ QUANDO ENCONTRAR MINHA TORRADA'},
+  {t:'fala',quem:'wesley',texto:'ENTÃO VEM CÁ QUE EU VOU TE DAR UMA SURRA EDUCATIVA'},
+  {t:'fala',quem:'gogo',texto:'EU SOU INVENCÍVEL'},
+  {t:'fala',quem:'wesley',texto:'E EU SOU O WESLEY MAFIOSO PORRA'},
+  {t:'luta',oponente:'gogo',lutador:'wesley',oponenteX:730},
+  {t:'fala',quem:'gogo',texto:'minha torrada...'},
+  {t:'fala',quem:'wesley',texto:'caralho tu ainda tá nessa'},
+  {t:'fala',quem:'gogo',texto:'era minha torrada favorita...'},
+  {t:'fala',quem:'wesley',texto:'olha só meu chara'},
+  {t:'aproximar',ate:530,vel:95},
+  {t:'esperar',seg:.7},
+  {t:'fala',quem:'wesley',texto:'você gostaria, por gentileza, de entrar para nossa equipe? 😊'},
+  {t:'esperar',seg:1.2},
+  {t:'fala',quem:'zusk',texto:'...'},
+  {t:'fala',quem:'espantalho',texto:'...'},
+  {t:'fala',quem:'gogo',texto:'...'},
+  {t:'fala',quem:'zusk',texto:'QUE PORRA FOI ESSA WESLEY'},
+  {t:'fala',quem:'wesley',texto:'CALA A BOCA CARALHO EU TÔ SENDO EDUCADO'},
+  {t:'fala',quem:'gogo',texto:'você...'},
+  {t:'fala',quem:'wesley',texto:'sim meu querido?'},
+  {t:'fala',quem:'gogo',texto:'VOCÊ PEDIU COM CARINHO...'},
+  {t:'fala',quem:'wesley',texto:'pedi sim meu amorzinho ❤️'},
+  {t:'fala',quem:'zusk',texto:'MANO?????????'},
+  {t:'fala',quem:'gogo',texto:'NINGUÉM NUNCA ME PEDIU NADA COM CARINHO'},
+  {t:'chorarGogo',seg:1.6},
+  {t:'fala',quem:'gogo',texto:'EU ACEITOOOOOOOOOOOOO'},
+  {t:'fala',quem:'espantalho',texto:'QUE BONITOOOOOMMMMM'},
+  {t:'fala',quem:'zusk',texto:'EU NÃO TÔ ENTENDENDO MAIS NADA'},
+  {t:'fala',quem:'wesley',texto:'PRONTO PORRA RESOLVI'},
+  {t:'levantarGogo',seg:1.3},
+  {t:'fala',quem:'gogo',texto:'AGORA SOMOS AMIGOS PARA SEMPRE'},
+  {t:'fala',quem:'wesley',texto:'tá bom chara'},
+  {t:'fala',quem:'gogo',texto:'MAS SE ALGUÉM COMER MINHA TORRADA...'},
+  {t:'fala',quem:'wesley',texto:'NINGUÉM VAI COMER SUA TORRADA CARALHO'},
+  {t:'fala',quem:'gogo',texto:'tá bom ❤️'},
+  {t:'fim',texto:'CAPÍTULO 3 CONCLUÍDO'}
+ ]}
 ];
 
 (function(){
@@ -117,6 +216,7 @@ const FASES=[
  }
  function iniciarCombate(p){
   const adversario=p.oponente||'golem';
+  if(p.lutador)selectedCharacter=p.lutador;
   window.storyWesleyForceUlt2=adversario==='wesley';window.storyWesleyUlt2Triggered=false;
   window.storyWesleyUlt2Decided=false;window.storyWesleyUlt2Approved=false;
   if(adversario==='golem')aplicarVidaChefe(p.etapa||1);
@@ -161,7 +261,7 @@ const FASES=[
   const fase=FASES.find(f=>f.id===cap);
   if(!fase){openStoryMap(slot,'Save '+(slot+1)+': a Fase '+cap+' ainda está em construção.');return}
   build();
-  WINS_NEEDED=2;window.storyProp=null;window.storyBossPhase=0;window.storyZuskFaint=0;window.storyZuskSpin=0;window.storyCinematicFall=false;
+  WINS_NEEDED=2;window.storyProp=null;window.storyGogoUltimate=null;window.storyGogoRage=false;window.storyBossPhase=0;window.storyZuskFaint=0;window.storyZuskSpin=0;window.storyCinematicFall=false;
   window.storyWesleyForceUlt2=false;window.storyWesleyUlt2Triggered=false;
   window.storyWesleyUlt2Decided=false;window.storyWesleyUlt2Approved=false;
   selectedMode='story';selectedCharacter='zusk';selectedStage=fase.palco;
@@ -171,11 +271,12 @@ const FASES=[
   for(const p of fase.passos)if(p.t==='transicao'){const m=STAGES.find(m=>m.id===p.palco);if(m)(new Image()).src=m.img}
   S={slot,fase,i:-1,step:null,t:0,ph:0,chars:0,pronta:false,dorme:false};
   if(fase.id===2){window.storyProp={scarecrow:{x:690}};window.storyZuskFaint=1;}
+  if(fase.id===3){window.storyProp={scarecrow:{x:360},wesley:{x:525}};window.storyZuskFaint=0;}
   setLock(true);esconder();proximo();
  };
  window.storyAbort=function(){
   if(!S&&!window.storyLock)return;
-  S=null;setLock(false);esconder();held.delete('crouch');WINS_NEEDED=2;window.storyProp=null;
+  S=null;setLock(false);esconder();held.delete('crouch');WINS_NEEDED=2;window.storyProp=null;window.storyGogoUltimate=null;window.storyGogoRage=false;
   LIFE.golem=[...golemLifeOriginal];window.storyBossPhase=0;
   window.storyWesleyForceUlt2=false;window.storyWesleyUlt2Triggered=false;
   window.storyWesleyUlt2Decided=false;window.storyWesleyUlt2Approved=false;
@@ -186,6 +287,34 @@ const FASES=[
   if(!S)return;S.i++;S.t=0;S.ph=0;
   const p=S.fase.passos[S.i];S.step=p;
   if(!p){const slot=S.slot;storyAbort();openStoryMap(slot);return}
+  if(p.t==='trocar'){
+   selectedCharacter=p.lutador;applyCharacterSpecs();maxHp=lifeMax(selectedCharacter);hp=maxHp;energy=0;
+   x=235;y=floor;face=1;vy=0;walk=0;action='';actionUntil=0;
+   window.storyGogoUltimate=null;window.storyGogoRage=false;
+   window.storyProp={gogo:{x:745}};
+   if(p.lutador==='scarecrow'){window.storyProp.zusk={x:105,fallen:true};window.storyProp.wesley={x:425};}
+   else if(p.lutador==='wesley'){window.storyProp.zusk={x:105,fallen:true};window.storyProp.scarecrow={x:882,trash:true};}
+   proximo();return;
+  }
+  if(p.t==='entradaGogo'){
+   window.storyProp={scarecrow:{x:355},wesley:{x:525},gogo:{x:p.de,walk:true}};
+  }
+  if(p.t==='reviverGogo'){
+   window.storyGogoRage=true;
+   if(!window.storyProp)window.storyProp={};
+   window.storyProp.gogo={x:740,rage:true,rise:0};
+  }
+  if(p.t==='chorarGogo'){
+   if(window.storyProp?.gogo)window.storyProp.gogo.cry=true;
+  }
+  if(p.t==='levantarGogo'){
+   if(window.storyProp?.gogo){window.storyProp.gogo.fallen=false;window.storyProp.gogo.rise=0;window.storyProp.gogo.cry=false;}
+  }
+  if(p.t==='furiaUltimate'){
+   window.storyGogoRage=true;
+   window.storyGogoUltimate={p:0,target:p.alvo,hitDone:false};
+   if(window.storyProp&&window.storyProp.gogo)window.storyProp.gogo.rage=true;
+  }
   if(p.t==='retomar'){
    const ix=S.fase.passos.findIndex(q=>q.t==='luta'&&q.oponente===p.oponente);
    if(ix<0){console.error('História: combate para reinício não encontrado',p.oponente);return}
@@ -226,7 +355,7 @@ const FASES=[
   if(p.t==='fala'||p.t==='rugido'){
    const f=FALANTES[p.quem]||{nome:'',retrato:'',ancora:'zusk',topo:21};
    const prop=window.storyProp&&window.storyProp[f.ancora];
-   const ax=f.ancora==='zusk'?x:prop?prop.x:dummyMode!=='none'?dummy.x:785;
+   const ax=f.ancora==='zusk'?(selectedCharacter==='zusk'?x:window.storyProp?.zusk?.x||115):f.ancora==='scarecrow'?(selectedCharacter==='scarecrow'?x:prop?.x||365):f.ancora==='wesley'?(selectedCharacter==='wesley'?x:prop?.x||510):prop?prop.x:dummyMode!=='none'?dummy.x:785;
    const img=els.balloon.querySelector('img');img.hidden=!f.retrato;if(f.retrato)img.src=f.retrato;
    els.balloon.querySelector('.sb-face').classList.toggle('mystery',!f.retrato);
    els.balloon.querySelector('.sb-name').textContent=f.nome;
@@ -250,6 +379,39 @@ const FASES=[
   const p=S.step;if(!p)return;
   if(S.dorme)held.add('crouch');else if(p.t!=='luta')held.delete('crouch');
   switch(p.t){
+   case 'aproximar':{
+     S.t+=dt;x=Math.min(p.ate,x+(p.vel||100)*dt);walk+=dt*8;face=1;
+     if(x>=p.ate){walk=0;proximo()}break;
+    }
+   case 'chorarGogo':{S.t+=dt;if(S.t>=p.seg)proximo();break;}
+   case 'levantarGogo':{S.t+=dt;if(window.storyProp?.gogo)window.storyProp.gogo.rise=clamp(S.t/p.seg,0,1);if(S.t>=p.seg)proximo();break;}
+   case 'entradaGogo':{
+     S.t+=dt;
+     const prop=window.storyProp?.gogo;
+     if(prop){prop.x=Math.max(p.ate,prop.x-(p.vel||360)*dt);if(prop.x<=p.ate){prop.walk=false;proximo();}}
+     else proximo();break;
+    }
+   case 'reviverGogo':{
+     S.t+=dt;zShake=Math.max(zShake,2+Math.sin(S.t*19)**2*4);
+     if(window.storyProp?.gogo)window.storyProp.gogo.rise=clamp(S.t/p.seg,0,1);
+     if(S.t>=p.seg)proximo();break;
+    }
+   case 'furiaUltimate':{
+     S.t+=dt;
+     const q=clamp(S.t/p.seg,0,1);
+     if(window.storyGogoUltimate){
+      const ult=window.storyGogoUltimate;ult.p=q;
+      if(q>=.41&&!ult.hitDone){ult.hitDone=true;hp=0;zShake=24;playSnd('kick',.7);
+       effects.push({x:x,y:floor-190,t:1150,label:'FÚRIA!'});
+      }
+     }
+     if(q>=.48){
+      if(p.alvo==='zusk'){window.storyZuskSpin=q*3.9;x=Math.max(70,240-(q-.48)*300);y=floor-110*Math.sin(Math.PI*clamp((q-.48)/.52,0,1));}
+      else{x=Math.min(895,240+(q-.48)*1200);y=floor-100*Math.sin(Math.PI*clamp((q-.48)/.52,0,1));}
+     }
+     if(S.t>=p.seg){window.storyGogoUltimate=null;window.storyGogoRage=false;window.storyZuskSpin=0;x=p.alvo==='zusk'?85:890;y=floor;proximo()}
+     break;
+    }
    case 'titulo':S.t+=dt;if(S.t>=2.2){els.title.classList.remove('on');proximo()}break;
    case 'esperar':S.t+=dt;if(S.t>=p.seg)proximo();break;
    case 'dormir':S.t+=dt;if(S.t>=p.seg){els.zzz.classList.remove('on');proximo()}break;
@@ -343,6 +505,7 @@ const FASES=[
     if(S.t>=2.8){
      els.title.classList.remove('on');
      const sl=storyLoad(),f=S.fase;
+     if(f.id===3)unlockStoryCharacter('gogo');
      if(sl[S.slot]){sl[S.slot].chapter=Math.max(sl[S.slot].chapter||1,f.id+1);sl[S.slot].updated=Date.now();storySave(sl)}
      storyMsg='Save '+(S.slot+1)+': Fase '+f.id+' concluída! Progresso salvo.';
      const slot=S.slot,notice=storyMsg;storyAbort();pausedAt=0;window.hasStarted=false;openStoryMap(slot,notice)}
@@ -369,13 +532,15 @@ const FASES=[
   if(adversario!=='golem'){dummyMode='none';document.getElementById('dummyMode').value='none';}
   if(adversario==='scarecrow')window.storyProp={scarecrow:{x:690}};
   else if(adversario==='wesley')window.storyProp={scarecrow:{x:870},wesley:{x:690}};
+  else if(adversario==='gogo')window.storyProp={gogo:{x:740,fallen:pw},...(selectedCharacter==='zusk'?{scarecrow:{x:375},wesley:{x:510}}:selectedCharacter==='scarecrow'?{zusk:{x:105,fallen:true},wesley:{x:425}}:{zusk:{x:100,fallen:true},scarecrow:{x:875,trash:true}})};
   if(!pw){
    if(adversario==='golem'){
     const ix=S.fase.passos.findIndex(q=>q.t==='desmaio');
     if(ix>=0)S.i=ix-1;
    }else if(adversario==='scarecrow'){
     S.i--; // retoma esta luta; o progresso do save é preservado
-   }else if(adversario==='wesley'){
+   }else if(adversario==='gogo'){S.i--; /* perdeu para Gogogolaiafi: repete só esta luta */}
+   else if(adversario==='wesley'){
     const ix=S.fase.passos.findIndex(q=>q.rota==='derrotaWesley');
     if(ix>=0)S.i=ix-1;
    }

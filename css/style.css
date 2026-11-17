@@ -83,6 +83,10 @@
 .sx-btn:active{transform:none;background:#00000018;filter:none}
 .sx-dot{position:absolute;z-index:6;padding:0;margin:0;min-width:0;height:auto;border-radius:50%;border:calc(5*var(--u)) solid #2b150a;background:#3a1d0e;box-shadow:inset 0 0 0 calc(4*var(--u)) #f9c579;cursor:pointer;touch-action:manipulation}
 .sx-dot.on{background:#fde992;box-shadow:none}
+.sx-arrow{position:absolute;z-index:8;display:flex;align-items:center;justify-content:center;min-width:0;height:auto;padding:0;border:calc(5*var(--u)) solid #ffda80;border-radius:calc(22*var(--u));background:linear-gradient(145deg,#965623,#542707);color:#fff3c5;text-shadow:0 calc(4*var(--u)) #5b270b;box-shadow:0 calc(6*var(--u)) calc(9*var(--u)) #170800a8;cursor:pointer;font:900 calc(52*var(--u))/1 Georgia,serif;touch-action:manipulation}
+.sx-arrow:hover:not(:disabled),.sx-arrow:focus-visible{outline:calc(3*var(--u)) solid #ffedb6;filter:brightness(1.25)}
+.sx-arrow:active:not(:disabled){transform:translateY(calc(3*var(--u)));filter:brightness(.95)}
+.sx-arrow:disabled{opacity:.37;cursor:default;filter:grayscale(.7)}
 .sx-dot:hover{filter:brightness(1.15)}
 .sx-dot:active{transform:none}
 
@@ -318,3 +322,14 @@ body.matchEnd .controls{display:none!important}
 .cx-secret-lock svg{width:100%;height:100%;display:block}
 .cx-hit.cx-unavailable,.cx-hit.cx-unavailable:disabled{cursor:not-allowed;opacity:1;filter:none;pointer-events:none}
 .cx-hit.cx-unavailable .cx-label{background:#6c7079;color:#eee;text-shadow:0 calc(1*var(--u)) #242424}
+
+/* P2: botões de toque completos, independentes do P1. */
+body.touchUI .controls-p2{display:none}
+body.touchUI.pvp2:not(.matchEnd) .controls-p2{display:flex;bottom:calc(70px + env(safe-area-inset-bottom));}
+.controls-p2 button{font-size:15px;min-width:46px;width:46px;height:46px;opacity:.88}
+.controls-p2 .move,.controls-p2 .actions{gap:4px}
+.controls-p2 .p2-badge{font-size:13px;background:#2563eb;border-radius:9px;padding:5px 6px;color:white;font-weight:900;white-space:nowrap;pointer-events:none}
+@media(max-width:650px){.controls-p2 button{min-width:30px;width:30px;height:38px;font-size:13px;border-radius:9px}.controls-p2 .move,.controls-p2 .actions{gap:2px}.controls-p2 .p2-badge{font-size:10px;padding:4px}}
+
+/* Gogogolaiafi: arte correta no seletor, miniatura reconstruída do novo sprite. */
+.cx-big img.gogo-selection{height:70%;max-width:100%;width:auto;object-fit:contain;}

@@ -6,5 +6,6 @@ const STAGES=[
  {id:'forest-danger',name:'Floresta Serena em Perigo',desc:'A Floresta Serena foi tomada por energia roxa e está à beira da corrupção.',img:'mapas/floresta-em-perigo.png'},
  {id:'forest-contaminated',name:'Floresta Contaminada',desc:'Uma floresta completamente corrompida, com trevas e energia tóxica por toda parte.',img:'mapas/floresta-contaminada.png'},
  {id:'cliff-contaminated',name:'Precipício Contaminado',desc:'um pequeno penhasco em cima de um rio contaminado',img:'mapas/precipicio-contaminado.png'},
- {id:'cornfield',name:'Milharal',desc:'Um campo de milho ao pôr do sol, ideal para lutas em terreno aberto.',img:'mapas/milharal.png'}
+ {id:'cornfield',name:'Milharal',desc:'Um campo de milho ao pôr do sol, ideal para lutas em terreno aberto.',img:'mapas/milharal.png'},
+ {id:'city-normal',name:'Cidade Normal',desc:'A cidade da Zenga, cheia de luzes, prédios e tecnologia futurista. Um novo palco para os confrontos.',img:'mapas/cidade-normal.png'}
 ];

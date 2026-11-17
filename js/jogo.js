@@ -21,7 +21,7 @@ function scareHoldTick(){
   else stop()
  }
 }
-function hit(dmg,unparry){if(dummyMode==='none'||dummy.hp<=0||!fightLive())return;if(typeof wesleyDummyImmune==='function'&&wesleyDummyImmune()){effects.push({x:dummy.x,y:floor-175,t:450,label:'IMUNE'});return}if(selectedMode==='vs'&&!unparry&&clock<(dummy.parryUntil||0)){dummyParried();return}let newHp=clamp(dummy.hp-dmg,0,dummyMax);
+function hit(dmg,unparry,silentFx=false){if(dummyMode==='none'||dummy.hp<=0||!fightLive())return;if(scareUltActive('p2')){effects.push({x:dummy.x,y:floor-185,t:400,label:'IMUNE'});return}if(P2_HUMAN()&&dummyChar==='zusk'&&dummy.p2Action==='mega'&&clock<dummy.actionUntil){effects.push({x:dummy.x,y:dummy.y-155,t:450,label:'IMUNE'});return}if(typeof wesleyDummyImmune==='function'&&wesleyDummyImmune()){effects.push({x:dummy.x,y:floor-175,t:450,label:'IMUNE'});return}if(selectedMode==='vs'&&!unparry&&clock<(dummy.parryUntil||0)){dummyParried();return}let newHp=clamp(dummy.hp-dmg,0,dummyMax);
  // Aos 30 HP, Wesley sorteia UMA vez (50%) se usará Dama Rosa neste confronto.
  // Só impede que um golpe ultrapasse os 30 HP quando a ultimate foi sorteada.
  // Se não foi sorteada, o dano segue normalmente, inclusive até K.O.
@@ -29,10 +29,11 @@ function hit(dmg,unparry){if(dummyMode==='none'||dummy.hp<=0||!fightLive())retur
   const usarDamaRosa=typeof window.storyDecideWesleyUlt2==='function'&&window.storyDecideWesleyUlt2();
   if(usarDamaRosa&&newHp<30)newHp=30;
  }
- dummy.hp=newHp;dummy.flash=170;if(dummyChar==='wesley')wesleyHurtSound();if(selectedMode==='vs'){dummy.stunUntil=clock+250;if(dmg>=10&&dummyChar!=='golem')dummy.pend=null}effects.push({x:dummy.x,y:floor-85,t:350,label:'-'+dmg});if(dummyChar==='wesley'&&window.storyWesleyForceUlt2&&window.storyWesleyUlt2Approved&&dummy.hp>0&&dummy.hp<=30&&typeof window.storyTriggerWesleyUlt2==='function')window.storyTriggerWesleyUlt2();if(dummy.hp===0){if(window.storyBossPhase&&dummyChar==='golem')dummy.storyPose='fallen';if(selectedMode==='vs'){endRound(0)}else{effects.push({x:dummy.x,y:floor-160,t:1000,label:'ALVO DERROTADO'});setTimeout(()=>{if(dummy.hp===0)dummy.hp=dummyMax},1200)}}}
-function start(name){if(playerCliffFalling)return false;if(selectedCharacter==='zusk'&&action==='mega'&&clock<actionUntil)return false;if(wesUltOn())return false;let a=specs[name];if(selectedCharacter==='wesley'&&(name==='frontTeleport'||name==='backTeleport')&&a)a=wesleyTauntSpec(a);if(clock<stunUntil&&['punch','kick','shot','superPunch','superKick','superShot','mega'].includes(name))return false;if(!a||energy<a.cost||(clock<actionUntil&&!['superPunch','superKick','superShot','parry','frontTeleport','backTeleport','mega'].includes(name)))return false;energy-=a.cost;action=name;actionUntil=clock+a.duration;if(selectedCharacter==='wesley'&&name!=='shot')wesleyStopShotSound();if(selectedCharacter==='wesley'&&name==='punch')wesleyPunchSound();if(selectedCharacter==='wesley'&&(name==='kick'||name==='superKick'))wesleyKickSound();if(name==='punch')playSnd('punch');else if(name==='kick')playSnd('kick');else if(selectedCharacter==='wesley'&&name==='superPunch')wesleySuperPunchSound();else if(selectedCharacter==='wesley'&&name==='superKick')wesleySuperKickSound();else if(name==='superPunch'||name==='superKick')playSuper();else if(selectedCharacter==='zusk'&&(name==='shot'||name==='superShot'||name==='mega'))playKi(name);else if((name==='frontTeleport'||name==='backTeleport')&&selectedCharacter!=='wesley')playTeleport();
+ dummy.hp=newHp;dummy.flash=170;if(P2_HUMAN()&&dummy.hp>0&&!(dummy.p2Action==='mega'&&clock<dummy.actionUntil))player2Interrupt();if(dummyChar==='wesley')wesleyHurtSound();if(selectedMode==='vs'){dummy.stunUntil=clock+(P2_HUMAN()?500:250);if(dmg>=10&&dummyChar!=='golem')dummy.pend=null}if(!silentFx)effects.push({x:dummy.x,y:floor-85,t:350,label:'-'+dmg});if(dummyChar==='wesley'&&window.storyWesleyForceUlt2&&window.storyWesleyUlt2Approved&&dummy.hp>0&&dummy.hp<=30&&typeof window.storyTriggerWesleyUlt2==='function')window.storyTriggerWesleyUlt2();if(dummy.hp===0){if(scareUltActive('p1'))return;if(window.storyBossPhase&&dummyChar==='golem')dummy.storyPose='fallen';if(selectedMode==='vs'){endRound(0)}else{effects.push({x:dummy.x,y:floor-160,t:1000,label:'ALVO DERROTADO'});setTimeout(()=>{if(dummy.hp===0)dummy.hp=dummyMax},1200)}}}
+function start(name){if(playerCliffFalling)return false;if(selectedCharacter==='zusk'&&action==='mega'&&clock<actionUntil)return false;if(wesUltOn()||scareUltActive('p1'))return false;let a=specs[name];if(selectedCharacter==='wesley'&&(name==='frontTeleport'||name==='backTeleport')&&a)a=wesleyTauntSpec(a);if(clock<stunUntil&&['punch','kick','shot','superPunch','superKick','superShot','mega'].includes(name))return false;if(name==='mega'&&selectedCharacter==='scarecrow'&&!scareUltRed('p1'))return false;if(!a||energy<a.cost||(clock<actionUntil&&!['superPunch','superKick','superShot','parry','frontTeleport','backTeleport','mega'].includes(name)))return false;energy-=a.cost;action=name;actionUntil=clock+a.duration;if(selectedCharacter==='wesley'&&name!=='shot')wesleyStopShotSound();if(selectedCharacter==='wesley'&&name==='punch')wesleyPunchSound();if(selectedCharacter==='wesley'&&(name==='kick'||name==='superKick'))wesleyKickSound();if(name==='punch')playSnd('punch');else if(name==='kick')playSnd('kick');else if(selectedCharacter==='wesley'&&name==='superPunch')wesleySuperPunchSound();else if(selectedCharacter==='wesley'&&name==='superKick')wesleySuperKickSound();else if(name==='superPunch'||name==='superKick')playSuper();else if(selectedCharacter==='zusk'&&(name==='shot'||name==='superShot'||name==='mega'))playKi(name);else if((name==='frontTeleport'||name==='backTeleport')&&selectedCharacter!=='wesley')playTeleport();
 if(name==='frontTeleport'||name==='backTeleport'){if(selectedCharacter==='wesley'){wesleyTauntStart(name);return true}if(selectedCharacter==='zusk'&&y>=floor-1){zTpStart=clock;zTpFromX=x;actionUntil=clock+ZTP_TOTAL}const tpDir=(name==='frontTeleport'?1:-1)*face;x=clamp(x+tpDir*300,55,905);effects.push({x,y:y-95,t:420,label:'TELEPORTE'});return true}
 if(name==='shot'){const act=actionUntil;if(selectedCharacter==='wesley')wesleyShotSound();setTimeout(()=>{if(action==='shot'&&actionUntil===act){if(selectedCharacter==='wesley')wesleyFireSound();shots.push({x:x+face*100,y:y-92,vx:face*12,damage:a.dmg,size:18,life:1600,color:'#ffdc48',homing:false,spr:selectedCharacter==='zusk',dir:face})}},160);return true}
+if(name==='mega'&&selectedCharacter==='scarecrow'){scareUltStart('p1');actionUntil=clock+SCARE_ULT_DURATION;return true}
 if(name==='mega'&&selectedCharacter==='zusk'){zMegaStart=clock;zMegaHitIdx=0;actionUntil=clock+ZM_TOTAL;return true}
 if(name==='superShot'&&selectedCharacter==='wesley'){const act=wesleySuperShotStart();setTimeout(()=>{if(action==='superShot'&&actionUntil===act){wesleyFireSound();shots.push({x:x+face*100,y:y-92,vx:face*12,damage:a.dmg,size:32,life:1600,color:'#76dcff',homing:true})}},160);return true}
 if(name==='superShot'&&selectedCharacter==='zusk'){const act=actionUntil;setTimeout(()=>{if(action==='superShot'&&actionUntil===act)shots.push({x:x+face*100,y:y-92,vx:face*12,damage:a.dmg,size:32,life:1600,color:'#ffdc48',homing:true,spr:true,dir:face})},235);return true}
@@ -190,14 +191,14 @@ function p2Press(k){if(!fightLive()||held2.has(k))return;held2.add(k);if(k==='pu
 const P2Pad={reset(){held2.clear();p2Hit=null},decide(){const a=p2Hit;p2Hit=null;return{move:(held2.has('right')?1:0)-(held2.has('left')?1:0),attack:a,charge:held2.has('charge')}}};
 const AI_ON=()=>selectedMode==='vs'&&dummyMode==='attack'&&(P2_HUMAN()||!!window.OpponentAI);
 const AI_ATTACKING=['punch','kick','shot','superPunch','superKick','superShot','mega'];
-function aiHitPlayer(dmg,unparry){
+function aiHitPlayer(dmg,unparry,silentFx=false){
   if(hp<=0||!fightLive())return;
   if(action==='mega'&&clock<actionUntil){effects.push({x,y:y-185,t:450,label:'IMUNE'});return}   // imune durante o ultimate
-  if(!unparry&&clock<=parryUntil){parrySuccess();hit(10);effects.push({x,y:y-175,t:550,label:'PARRY! +10'});return}
+  if(!unparry&&clock<parryUntil){parrySuccess();hit(10);effects.push({x,y:y-175,t:550,label:'PARRY! +10'});return}
   hp=clamp(hp-dmg,0,maxHp);stunUntil=clock+500;action='';actionUntil=0;if(selectedCharacter==='wesley')wesleyHurtSound();
   if(pendingShot){clearTimeout(pendingShot);pendingShot=null}
-  effects.push({x,y:y-160,t:550,label:'-'+dmg+' VIDA'});effects.push({x,y:y-185,t:500,label:'ATORDOADO'});
-  if(hp===0)endRound(1);
+  if(!silentFx){effects.push({x,y:y-160,t:550,label:'-'+dmg+' VIDA'});effects.push({x,y:y-185,t:500,label:'ATORDOADO'});}
+  if(hp===0&&!scareUltActive('p2'))endRound(1);
 }
 // ===== Trava do super soco do Wesley (11 socos) =====
 const SUPER_LOCK_REACT=[200,550]; // ms: tempo de reação do inimigo até tentar escapar (mín, máx)
@@ -225,7 +226,8 @@ function aiStep(dt){
   for(const s of eshots){if(s.homing&&hp>0){const dx=x-s.x,dy=(y-90)-s.y,d=Math.hypot(dx,dy);if(d>0){const st=Math.min(660*dt,d);s.x+=dx/d*st;s.y+=dy/d*st}}else s.x+=s.vx*dt*60;s.life-=dt*1000;
     if(s.life>0&&fightLive()&&Math.abs(s.x-x)<s.size/2+22&&Math.abs(s.y-(y-90))<70){aiHitPlayer(s.damage);if(s.wmega){zImpacts.push({t:clock,x,y:y-90,k:2});zShake=Math.max(zShake,12)}s.life=0}}
   eshots=eshots.filter(s=>s.life>0&&s.x>0&&s.x<960);
-  if(dummy.hp<=0||!fightLive()||dummy.cliffFalling){if(typeof wesleyDummyReset==='function'&&(dummy.wAct||dummy.charging))wesleyDummyReset();return}
+  if(dummy.hp<=0||!fightLive()||dummy.cliffFalling){if(!P2_HUMAN()&&typeof wesleyDummyReset==='function'&&(dummy.wAct||dummy.charging))wesleyDummyReset();return}
+  if(P2_HUMAN()){player2Tick(dt);return}
   const AI=P2_HUMAN()?P2Pad:window.OpponentAI;
   if(!P2_HUMAN())dummy.energy=dummyChar==='golem'?0:Math.min(100,dummy.energy+8*dt);
   if(dummyChar==='wesley'&&window.storyWesleyForceUlt2&&window.storyWesleyUlt2Approved&&dummy.hp>0&&dummy.hp<=30&&typeof window.storyTriggerWesleyUlt2==='function')window.storyTriggerWesleyUlt2();   // IA recupera sozinha; o P2 humano precisa carregar (L)
@@ -234,7 +236,7 @@ function aiStep(dt){
   if(p&&clock>=p.at){dummy.pend=null;const a=specs[p.name];
     if(dummyChar==='golem'&&p.name==='kick')golemHammerImpact();
     if(p.name==='shot'){const d=x>=dummy.x?1:-1;if(dummyChar==='wesley')wesleyFireSound();eshots.push({x:dummy.x+d*60,y:floor-92,vx:d*10,damage:a.dmg,size:18,life:1600})}
-    else if(Math.abs(dummy.x-x)<=a.range+8+(dummyChar==='golem'?GOLEM_REACH:0)&&Math.abs(y-floor)<80)aiHitPlayer(a.dmg*(dummyChar==='golem'?GOLEM_DMG:1))}
+    else if(Math.abs(dummy.x-x)<=a.range+8+(dummyChar==='golem'?GOLEM_REACH:dummyChar==='gogo'?45:0)&&Math.abs(y-floor)<80)aiHitPlayer(dummyChar==='golem'?golemAttackDamage(a.dmg):dummyChar==='gogo'?a.dmg+5:a.dmg)}
   // Super soco do Wesley em andamento: o inimigo não anda nem ataca; só pode dar parry.
   const lk=superLock();
   if(lk&&!dummy.wasLocked){dummy.lockAt=clock+SUPER_LOCK_REACT[0]+Math.random()*(SUPER_LOCK_REACT[1]-SUPER_LOCK_REACT[0]);dummy.lockDid=P2_HUMAN()||Math.random()>=SUPER_LOCK_PARRY_CHANCE}
@@ -243,10 +245,10 @@ function aiStep(dt){
   if(lk){if(!dummy.lockDid&&clock>=dummy.lockAt){dummy.lockDid=true;aiLockEscape()}return}
   const stunned=clock<dummy.stunUntil,busy=clock<dummy.actionUntil;
   if(dummyChar==='wesley'&&typeof wesleyDummyTick==='function'){if(stunned)wesleyDummyInterrupt();wesleyDummyTick(dt)}
-  const pick=k=>({range:specs[k].range==null?specs[k].range:specs[k].range+(dummyChar==='golem'?GOLEM_REACH:0),dmg:specs[k].dmg*(dummyChar==='golem'?GOLEM_DMG:1),cost:specs[k].cost,duration:specs[k].duration});
+  const pick=k=>({range:specs[k].range==null?specs[k].range:specs[k].range+(dummyChar==='golem'?GOLEM_REACH:dummyChar==='gogo'?42:0),dmg:dummyChar==='golem'?golemAttackDamage(specs[k].dmg):specs[k].dmg,cost:specs[k].cost,duration:specs[k].duration});
   const s={
     self:{x:dummy.x,hp:dummy.hp,hpMax:dummyMax,energy:dummy.energy,canAct:!stunned&&!busy,busy,stunned,facing:x>=dummy.x?1:-1,character:dummyChar,charging:!!dummy.charging,zone:(typeof wesleyDummyZone==='function'?wesleyDummyZone(dummy.hp):'green')},
-    enemy:{x,y,hp,hpMax:maxHp,energy,action,attacking:AI_ATTACKING.includes(action)&&clock<actionUntil,stunned:clock<stunUntil,airborne:y<floor-1,crouching:held.has('crouch'),parrying:clock<=parryUntil,facing:face,character:selectedCharacter},
+    enemy:{x,y,hp,hpMax:maxHp,energy,action,attacking:AI_ATTACKING.includes(action)&&clock<actionUntil,stunned:clock<stunUntil,airborne:y<floor-1,crouching:held.has('crouch'),parrying:clock<parryUntil,facing:face,character:selectedCharacter},
     specs:{punch:pick('punch'),kick:pick('kick'),shot:pick('shot'),parry:pick('parry'),...(dummyChar==='wesley'?{superPunch:pick('superPunch'),superKick:pick('superKick'),superShot:pick('superShot'),mega:pick('mega')}:{})},
     arena:{min:55,max:905},
     round:{number:round,wins:roundWins,time:roundTime,mode:'vs'}
@@ -257,13 +259,16 @@ function aiStep(dt){
   if((dummyChar==='wesley'||P2_HUMAN())&&r.charge&&!r.attack&&!mv){dummy.energy=Math.min(100,dummy.energy+15*dt);if(!dummy.charging)dummyChargeSet(true);return}
   if(dummy.charging)dummyChargeSet(false);
   const oldX=dummy.x;
-  if(mv){dummy.x=clamp(dummy.x+mv*(P2_HUMAN()?250:dummyChar==='golem'?GOLEM_SPEED:200)*dt,55,905);dummyCliffDropBegin();}
+  if(mv){dummy.x=clamp(dummy.x+mv*(P2_HUMAN()?250:dummyChar==='golem'?GOLEM_SPEED:dummyChar==='gogo'?160:200)*dt,55,905);dummyCliffDropBegin();}
+  if(dummyChar==='gogo' && Math.abs(dummy.x-oldX)>.1)dummy.gogoWalkUntil=clock+145;
   if(dummyChar==='wesley' && Math.abs(dummy.x-oldX)>.1){
     dummy.wesleyWalkDistance=(dummy.wesleyWalkDistance||0)+Math.abs(dummy.x-oldX);
     dummy.wesleyWalkUntil=clock+130;
   }
   // O Golem prefere sua martelada; o soco continua disponível para variar os golpes.
   const n=dummyChar==='golem'&&r.attack==='punch'&&Math.random()<.65?'kick':r.attack;
+  if(dummyChar==='scarecrow'&&scareUltRed('p2')&&dummy.energy>=100&&Math.random()<.17){dummy.energy-=100;dummy.actionUntil=clock+SCARE_ULT_DURATION;scareUltStart('p2');return}
+  if(dummyChar==='scarecrow'&&n==='mega'&&scareUltRed('p2')&&dummy.energy>=100){dummy.energy-=100;dummy.actionUntil=clock+SCARE_ULT_DURATION;scareUltStart('p2');return}
   if(dummyChar==='wesley'&&['superPunch','superKick','superShot','mega','parry'].includes(n)&&typeof wesleyDummyStart==='function'){const a=specs[n];if(a&&dummy.energy>=a.cost&&wesleyDummyStart(n))dummy.energy-=a.cost;return}
   if(n==='punch'||n==='kick'||n==='shot'){
     const a=specs[n];if(dummy.energy<a.cost)return;
@@ -321,7 +326,7 @@ function special(){
 function press(k){
  if(!fightLive()||playerCliffFalling)return;
  // O Ultimate bloqueia novas ações até terminar sua recuperação.
- if((selectedCharacter==='zusk'&&action==='mega'&&clock<actionUntil)||wesUltOn())return;
+ if((selectedCharacter==='zusk'&&action==='mega'&&clock<actionUntil)||wesUltOn()||scareUltActive('p1'))return;
  if(held.has(k))return;
  held.add(k);
  pressedAt[k]=performance.now();
@@ -336,12 +341,12 @@ function press(k){
 function release(k){held.delete(k)}
 document.querySelectorAll('[data-k]').forEach(b=>{const k=b.dataset.k;b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);press(k);b.classList.add('active')});for(const ev of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(ev,()=>{release(k);b.classList.remove('active')})});
 document.addEventListener('keydown',e=>{const kn=e.key.toLowerCase();
- if(P2_HUMAN()&&keys2[kn]){e.preventDefault();if(!e.repeat&&!menuOpen)p2Press(keys2[kn]);return}   // setas, P, O, I, L são só do P2
+ if(P2_HUMAN()&&keys2[kn]){e.preventDefault();if(!e.repeat&&!menuOpen)player2Press(keys2[kn]);return}   // setas, P, O, I, L são só do P2
  let k=keys[kn];if(k){e.preventDefault();if(!e.repeat)press(k)}});
 document.addEventListener('keyup',e=>{const kn=e.key.toLowerCase();
- if(P2_HUMAN()&&keys2[kn]){held2.delete(keys2[kn]);return}
+ if(P2_HUMAN()&&keys2[kn]){e.preventDefault();player2Release(keys2[kn]);return}
  let k=keys[kn];if(k)release(k)});
-window.addEventListener('blur',()=>{held.clear();held2.clear()});
+window.addEventListener('blur',()=>{held.clear();held2.clear();if(typeof player2StopInput==='function')player2StopInput()});
 function line(x1,y1,x2,y2,w,col){g.strokeStyle=col;g.lineWidth=w;g.lineCap='square';g.beginPath();g.moveTo(Math.round(x1),Math.round(y1));g.lineTo(Math.round(x2),Math.round(y2));g.stroke()}
 function bar(x,y,w,value,color){g.fillStyle='#162438';g.fillRect(x,y,w,20);g.fillStyle=color;g.fillRect(x,y,w*value/100,20);g.strokeStyle='#fff';g.lineWidth=2;g.strokeRect(x,y,w,20)}
 const stageImage=new Image();stageImage.src='mapas/floresta-serena.jpg';
@@ -421,7 +426,7 @@ function zuskMegaTick(){
   const i=zMegaHitIdx++;
   if(dummyMode!=='none'&&dummy.hp>0&&Math.sign(dummy.x-x)===face&&Math.abs((floor-80)-(y-ZM_PY))<110){hit(ZM_HITDMG);zImpacts.push({t:clock,x:dummy.x,y:floor-90,k:i});zShake=Math.max(zShake,i===2?10:7)}}}
 // Fundo escurece enquanto o super está ativo (personagens e HUD ficam por cima do filtro).
-function drawMegaDim(){const on=(selectedCharacter==='zusk'&&zMegaStart>=0&&action==='mega'&&clock<actionUntil)||wesUltOn();zDim+=((on?.72:0)-zDim)*.1;if(zDim>.01){g.fillStyle='rgba(0,0,0,'+zDim.toFixed(3)+')';g.fillRect(0,0,960,540)}}
+function drawMegaDim(){const on=(selectedCharacter==='zusk'&&zMegaStart>=0&&action==='mega'&&clock<actionUntil)||(P2_HUMAN()&&dummyChar==='zusk'&&dummy.p2Action==='mega'&&clock<dummy.actionUntil)||wesUltOn()||(P2_HUMAN()&&dummyChar==='wesley'&&typeof wesleyDummyImmune==='function'&&wesleyDummyImmune());zDim+=((on?.72:0)-zDim)*.1;if(zDim>.01){g.fillStyle='rgba(0,0,0,'+zDim.toFixed(3)+')';g.fillRect(0,0,960,540)}}
 // Impact frames: clarão branco com linhas pretas -> quadro preto com linhas brancas -> explosão dourada. Os clarões de tela cheia seguem a opção "Efeitos visuais".
 function zRnd(n){const v=Math.sin(n*127.1+311.7)*43758.5453;return v-Math.floor(v)}
 function zLines(cx,cy,n,r0,r1,col,seed,wid){g.fillStyle=col;for(let i=0;i<n;i++){const a=(i+zRnd(seed+i))/n*Math.PI*2,w=wid*(.35+zRnd(seed+i*3.1)),ri=r0*(.6+zRnd(seed+i*7.7)*.8);g.beginPath();g.moveTo(cx+Math.cos(a)*ri,cy+Math.sin(a)*ri);g.lineTo(cx+Math.cos(a-w)*r1,cy+Math.sin(a-w)*r1);g.lineTo(cx+Math.cos(a+w)*r1,cy+Math.sin(a+w)*r1);g.closePath();g.fill()}}
@@ -500,6 +505,7 @@ function scareFrame(){if(!(clock<actionUntil))return 0;const sp=specs[action];if
   const t=clock-scareStart;return t<SCARE_FIRST?1+Math.floor(t/SCARE_FIRST*4):5+Math.floor((t-SCARE_FIRST)/45)%10}
  if(action==='superPunch'||action==='superKick')return 1+Math.floor(p*19);return 0}
 function drawScarecrow(){
+ if(scareUltActive('p1')){g.save();g.translate(Math.round(x),Math.round(y));g.scale(face,1);scareUltDrawGiant(g,'p1');g.restore();return}
  if(!scareImg.complete||!scareImg.naturalWidth)return;
  const crouch=held.has('crouch')&&y>=floor,att=clock<actionUntil?action:'';
  const dur=(att&&specs[att]&&specs[att].duration)||1,p=att?clamp(1-(actionUntil-clock)/dur,0,1):0,a=Math.sin(p*Math.PI);
@@ -568,6 +574,7 @@ function drawWesley(){
   g.beginPath();g.arc(50,att.toLowerCase().includes('kick')?-55:-95,23,-1.35,1.2);g.stroke();g.restore()}
 }
 function drawPlayer(){
+ if(selectedCharacter==='gogo'){drawZengaSprite('gogo',x,{height:GOGO_HEIGHT,py:y,face,flash:clock<stunUntil,crouch:held.has('crouch')&&y>=floor,airborne:y<floor-1,walking:walk>0,atk:clock<actionUntil,p:clock<actionUntil&&specs[action]?clamp(1-(actionUntil-clock)/specs[action].duration,0,1):0});return}
  if(selectedCharacter==='wesley'){drawWesley();return}
  if(selectedCharacter==='scarecrow'){drawScarecrow();return}
  if(!zuskAtlas.complete||!zuskAtlas.naturalWidth)return;
@@ -612,12 +619,12 @@ let round=1,roundState='fight',rsTimer=0,matchOver=false,roundWinner=-1,banner={
 const fightLive=()=>!matchOver&&!window.storyLock&&(selectedMode!=='vs'||roundState==='fight');
 function refillLife(){maxHp=lifeMax(selectedCharacter);dummyMax=lifeMax(dummyChar);hp=maxHp;dummy.hp=dummyMax}
 function lifeSegs(total,id){const c=LIFE[id];let r=total;const red=Math.min(r,c[2]);r-=red;const yel=Math.min(r,c[1]);r-=yel;const grn=Math.min(r,c[0]);return [grn,yel,red]}
-function resetFighterState(){playerCliffFalling=false;dummy.cliffFalling=false;dummy.cliffFallY=0;dummy.cliffFallVy=0;x=240;y=floor;vy=0;face=1;walk=0;action='';actionUntil=0;stunUntil=0;parryUntil=0;parryStartAt=-1;parryHitAt=-1;charging=false;energy=0;
+function resetFighterState(){scareUltStopAll();playerCliffFalling=false;dummy.cliffFalling=false;dummy.cliffFallY=0;dummy.cliffFallVy=0;x=240;y=floor;vy=0;face=1;walk=0;action='';actionUntil=0;stunUntil=0;parryUntil=0;parryStartAt=-1;parryHitAt=-1;charging=false;energy=0;
   if(pendingShot){clearTimeout(pendingShot);pendingShot=null}
   scareState=0;zMegaStart=-1;zTpStart=-1;zImpacts=[];zShake=0;zDim=0;zCr=0;zChT=0;zChOut=0;
-  dummy.x=stageHazardDamage()?650:730;dummy.flash=0;dummy.attackTimer=0;dummy.attackAnim=0;shots=[];effects=[];held.clear();held2.clear();p2Hit=null;eshots=[];dummy.energy=0;dummy.actionUntil=0;dummy.stunUntil=0;dummy.pend=null;dummy.parryUntil=0;dummy.wasLocked=false;if(typeof wesleyDummyReset==='function')wesleyDummyReset();if(typeof golemHammerBursts!=='undefined')golemHammerBursts=[];if(window.OpponentAI)OpponentAI.reset()}
+  dummy.x=stageHazardDamage()?650:730;dummy.gogoWalkUntil=0;dummy.flash=0;dummy.attackTimer=0;dummy.attackAnim=0;shots=[];effects=[];held.clear();held2.clear();p2Hit=null;eshots=[];dummy.energy=0;dummy.actionUntil=0;dummy.stunUntil=0;dummy.pend=null;dummy.parryUntil=0;dummy.parryOkAt=-99999;dummy.wasLocked=false;if(typeof wesleyDummyReset==='function')wesleyDummyReset();if(typeof player2Reset==='function')player2Reset();if(typeof golemHammerBursts!=='undefined')golemHammerBursts=[];if(window.OpponentAI)OpponentAI.reset()}
 function showBanner(text,dur){banner={text,t:dur,dur}}
-function endRound(w,text){if(roundState!=='fight')return;roundState='ko';rsTimer=1.7;roundWinner=w;if(w>=0)roundWins[w]++;showBanner(text||'K.O.',99);shots=[];eshots=[];dummy.pend=null;held.clear();held2.clear();p2Hit=null}
+function endRound(w,text){if(roundState!=='fight')return;scareUltStopAll();roundState='ko';rsTimer=1.7;roundWinner=w;if(w>=0)roundWins[w]++;showBanner(text||'K.O.',99);shots=[];eshots=[];dummy.pend=null;held.clear();held2.clear();p2Hit=null;if(typeof player2StopInput==='function')player2StopInput()}
 function nextRound(){if(roundWinner>=0)round++;resetFighterState();hp=maxHp;dummy.hp=dummyMax;roundTime=99;roundState='intro';rsTimer=1.6;showBanner('ROUND '+round,1.6)}
 function finishMatch(){matchOver=true;const pw=roundWins[0]>=WINS_NEEDED;if(window.storyMatchEnd&&storyMatchEnd(pw))return;
   document.getElementById('endTitle').textContent=(P2_HUMAN()?(pw?'P1 · ':'P2 · '):'')+charName(pw?selectedCharacter:dummyChar)+' VENCEU!';
@@ -672,7 +679,7 @@ function portrait(cx,cy,right=false){
  polygon([[-23,-23],[23,-23],[28,-16],[28,20],[20,27],[-20,27],[-28,20],[-28,-16]],'#292332','#e7ac59',3);
  g.beginPath();g.rect(-21,-19,42,38);g.clip();
  g.fillStyle=right?'#58677b':'#293d59';g.fillRect(-21,-19,42,38);
- if(!(right&&dummyMode==='none')){const id=right?dummyChar:selectedCharacter;const pi=id==='golem'?golemPortrait:id==='scarecrow'?scarePortrait:id==='wesley'?wesleyPortrait:zuskPortrait;if(pi.complete&&pi.naturalWidth)g.drawImage(pi,-21,-19,42,38)}
+ if(!(right&&dummyMode==='none')){const id=right?dummyChar:selectedCharacter;const pi=id==='golem'?golemPortrait:id==='gogo'?zengaGogoPortrait:id==='scarecrow'?scarePortrait:id==='wesley'?wesleyPortrait:zuskPortrait;if(pi.complete&&pi.naturalWidth)g.drawImage(pi,-21,-19,42,38)}
  g.restore();
  g.fillStyle=right?'#327cce':'#b93447';g.fillRect(cx-14,cy+25,28,12);
  g.fillStyle='#fff1d0';g.font='bold 10px sans-serif';g.textAlign='center';g.fillText(right?'P2':'P1',cx,cy+34);
@@ -696,9 +703,11 @@ function drawCombatHUD(){
 }
 // Manequim com personagem (padrão: Espantalho, escolhido na tela de seleção ou na pausa do treino).
 // Parado = quadro 0; vira para o jogador; brilha e é empurrado ao levar dano; ataca com o giro (Espantalho) ou o soco (Zusk).
-const charName=id=>({zusk:'ZUSK',scarecrow:'ESPANTALHO',wesley:'WESLEY MAFIOSO',golem:'GOLEM ROXO'}[id]||'LUTADOR');
+const charName=id=>({zusk:'ZUSK',scarecrow:'ESPANTALHO',wesley:'WESLEY MAFIOSO',golem:'GOLEM ROXO',gogo:'GOGOGOLAIAFI'}[id]||'LUTADOR');
 function drawDummyChar(){
+ if(dummyChar==='scarecrow'&&scareUltActive('p2')){g.save();g.translate(Math.round(dummy.x),floor);g.scale(x>=dummy.x?1:-1,1);scareUltDrawGiant(g,'p2');g.restore();return}
  if(dummyChar==='golem'){drawGolemDummy();return}
+ if(dummyChar==='gogo'){drawGogoDummy();return}
  const ok=i=>i.complete&&i.naturalWidth,flash=dummy.flash>0,fc=x<dummy.x?-1:1;
  const atk=dummy.attackAnim>0,p=atk?clamp(1-dummy.attackAnim/.32,0,.999):0;
  const hq=flash?clamp(1-dummy.flash/170,0,.999):0,hw=Math.sin(hq*Math.PI);
@@ -750,33 +759,52 @@ function drawStoryNPC(char,prop){
  g.drawImage(img,(fi%sp.cols)*cw,Math.floor(fi/sp.cols)*ch,cw,ch,-ax*sc,-base*sc,cw*sc,ch*sc);
  g.restore();
 }
+
+function drawStoryZuskNPC(prop){
+ if(!zuskAtlas.complete||!zuskAtlas.naturalWidth)return;
+ const size=ZK.s,fi=prop.fallen?0:Math.floor(clock/180)%8;
+ g.save();g.translate(prop.x,floor);g.scale(-1,1);
+ if(prop.fallen){g.translate(0,-22);g.rotate(-Math.PI/2)}
+ g.drawImage(zuskAtlas,(fi%ZK.cols)*ZK.cw,Math.floor(fi/ZK.cols)*ZK.ch,ZK.cw,ZK.ch,-ZK.cw/2*size,-ZK.base*size,ZK.cw*size,ZK.ch*size);
+ g.restore();
+}
+
 function draw(){g.setTransform(canvas.width/960,0,0,canvas.height/540,0,0);zuskMegaTick();if(zShake>.4){g.translate((Math.random()-.5)*zShake*2,(Math.random()-.5)*zShake*2);zShake*=.85}else zShake=0;if(stageImage.complete&&stageImage.naturalWidth)g.drawImage(stageImage,0,0,960,540);else{g.fillStyle='#c5a46a';g.fillRect(0,0,960,540)}
 drawMegaDim();if(!window.storyHideHud)drawCombatHUD();
 // Alvo de treino, não é um segundo personagem jogável
 if(window.storyProp){
  const props=window.storyProp;
  if(props.golem)drawGolemAt(props.golem.x,{atk:!!props.golem.atk,p:props.golem.p||0});
- if(props.scarecrow)drawStoryNPC('scarecrow',props.scarecrow);
+ if(props.scarecrow){if(props.scarecrow.trash){g.save();g.globalAlpha=.75;drawStoryNPC('scarecrow',{x:props.scarecrow.x,face:-1});g.restore();drawZengaTrash(props.scarecrow.x)}else drawStoryNPC('scarecrow',props.scarecrow);}
  if(props.wesley)drawStoryNPC('wesley',props.wesley);
+ if(props.zusk)drawStoryZuskNPC(props.zusk);
+ if(props.gogo)drawZengaNPC('gogo',props.gogo);
+ if(props.gostosa)drawZengaNPC('gostosa',props.gostosa);
 }
-if(dummyMode!=='none'){drawDummyChar();if(typeof wesleyDummyDrawStand==='function')wesleyDummyDrawStand(g)}
-drawPlayer();if(typeof drawWesleyStand==='function')drawWesleyStand(g);drawZuskBeam();if(typeof drawGolemHammerEffects==='function')drawGolemHammerEffects();
+if(dummyMode!=='none'){if(P2_HUMAN())drawPlayer2();else drawDummyChar();if(typeof wesleyDummyDrawStand==='function')wesleyDummyDrawStand(g)}
+drawPlayer();if(typeof drawWesleyStand==='function')drawWesleyStand(g);drawZuskBeam();if(P2_HUMAN())drawPlayer2ZuskBeam();if(typeof drawGolemHammerEffects==='function')drawGolemHammerEffects();
 for(let shot of shots){if(shot.wmega){g.save();const gr=g.createRadialGradient(shot.x,shot.y,2,shot.x,shot.y,shot.size);gr.addColorStop(0,'#fff');gr.addColorStop(.4,'#ffe38a');gr.addColorStop(1,'rgba(255,170,40,0)');g.fillStyle=gr;g.beginPath();g.arc(shot.x,shot.y,shot.size,0,Math.PI*2);g.fill();g.restore();continue}if(shot.spr&&zuskOrb.complete&&zuskOrb.naturalWidth){const age=1600-shot.life,fi=age<140?Math.min(3,Math.floor(age/35)):[5,6,7,6][Math.floor((age-140)/55)%4],sc=.17+.13*Math.min(1,age/160);g.save();g.translate(Math.round(shot.x),Math.round(shot.y));g.scale(shot.dir,1);g.drawImage(zuskOrb,fi*ZKO.pw,0,ZKO.pw,ZKO.ph,-ZKO.ax*sc,-ZKO.ay*sc,ZKO.pw*sc,ZKO.ph*sc);g.restore();continue}g.fillStyle=shot.color;g.fillRect(shot.x-shot.size/2,shot.y-shot.size/2,shot.size,shot.size);g.fillStyle='#fff';g.fillRect(shot.x-shot.size/4,shot.y-shot.size/4,shot.size/2,shot.size/2)}
-for(const s of eshots){g.save();if(s.wmega){const gr=g.createRadialGradient(s.x,s.y,2,s.x,s.y,s.size);gr.addColorStop(0,'#fff');gr.addColorStop(.4,'#ffe38a');gr.addColorStop(1,'rgba(255,170,40,0)');g.fillStyle=gr;g.beginPath();g.arc(s.x,s.y,s.size,0,7);g.fill()}else{g.fillStyle=s.homing?'#76dcff':'#ff6b5a';g.strokeStyle='#fff';g.lineWidth=3;g.beginPath();g.arc(Math.round(s.x),Math.round(s.y),s.homing?15:11,0,7);g.fill();g.stroke()}g.restore()}for(let e of effects){if(!/^[-+]/.test(e.label))continue;g.fillStyle='#fff1aa';g.font='bold 17px monospace';g.fillText(e.label,e.x,e.y)}
+for(const s of eshots){g.save();if(s.spr&&zuskOrb.complete&&zuskOrb.naturalWidth){
+  const age=1600-s.life,fi=age<140?Math.min(3,Math.floor(age/35)):[5,6,7,6][Math.floor((age-140)/55)%4],sc=.17+.13*Math.min(1,age/160);
+  g.translate(Math.round(s.x),Math.round(s.y));g.scale(s.dir||-1,1);
+  g.drawImage(zuskOrb,fi*ZKO.pw,0,ZKO.pw,ZKO.ph,-ZKO.ax*sc,-ZKO.ay*sc,ZKO.pw*sc,ZKO.ph*sc);
+  }else if(s.wmega){const gr=g.createRadialGradient(s.x,s.y,2,s.x,s.y,s.size);gr.addColorStop(0,'#fff');gr.addColorStop(.4,'#ffe38a');gr.addColorStop(1,'rgba(255,170,40,0)');g.fillStyle=gr;g.beginPath();g.arc(s.x,s.y,s.size,0,7);g.fill()}else{g.fillStyle=s.color||(s.homing?'#76dcff':'#ff6b5a');g.strokeStyle='#fff';g.lineWidth=3;g.beginPath();g.arc(Math.round(s.x),Math.round(s.y),s.homing?15:11,0,7);g.fill();g.stroke()}g.restore()}for(let e of effects){if(!/^[-+]/.test(e.label))continue;g.fillStyle='#fff1aa';g.font='bold 17px monospace';g.fillText(e.label,e.x,e.y)}
 drawImpactFrames();
+if(typeof drawZengaCinematic==='function')drawZengaCinematic();
+if(typeof scareUltDrawFX==='function')scareUltDrawFX(g);
 }
-function tick(now){if(menuOpen||matchOver){auraUpdate(false);last=now;requestAnimationFrame(tick);return;}if(!last)last=now;let dt=Math.min((now-last)/1000,.05);last=now;clock=now;roundUpdate(dt);let dir=fightLive()&&!playerCliffFalling&&!(selectedCharacter==='zusk'&&action==='mega'&&clock<actionUntil)&&!superLock()&&!wesUltOn()?(held.has('right')?1:0)-(held.has('left')?1:0):0;let moving=dir!==0&&!held.has('crouch');if(moving){x=clamp(x+dir*250*dt,55,905);face=dir;walk+=dt*11}else walk=0;
+function tick(now){if(menuOpen||matchOver){auraUpdate(false);last=now;requestAnimationFrame(tick);return;}if(!last)last=now;let dt=Math.min((now-last)/1000,.05);last=now;clock=now;roundUpdate(dt);scareUltTick();let dir=fightLive()&&!playerCliffFalling&&!(selectedCharacter==='zusk'&&action==='mega'&&clock<actionUntil)&&!scareUltActive('p1')&&!superLock()&&!wesUltOn()?(held.has('right')?1:0)-(held.has('left')?1:0):0;let moving=dir!==0&&!held.has('crouch');if(moving){x=clamp(x+dir*250*dt,55,905);face=dir;walk+=dt*11}else walk=0;
 playerCliffDropBegin();
 if(!window.storyCinematicFall){y+=vy*dt*60;vy+=.75*dt*60;}
 if(!window.storyCinematicFall&&!playerCliffFalling&&y>=floor){if(stageHazardDamage()&&x>=STAGE_CLIFF_LEDGE_X)playerCliffDropBegin();else{y=floor;vy=0}}
-playerCliffDropTick();charging=held.has('charge')&&!moving&&fightLive()&&!(selectedCharacter==='zusk'&&action==='mega'&&clock<actionUntil)&&!wesUltOn();auraUpdate(charging);if(selectedCharacter==='wesley'){wesleyTauntTick();if(typeof wesleyUlt2Tick==='function')wesleyUlt2Tick()}if(charging){energy=clamp(energy+15*dt,0,100);chargeTick++}if(AI_ON()){aiStep(dt)}dummyCliffDropTick(dt);if(!AI_ON()&&dummyMode==='attack'&&dummy.hp>0&&fightLive()){dummy.attackTimer+=dt;if(dummy.attackTimer>=3){dummy.attackTimer-=3;dummy.attackAnim=.32;if(Math.abs(dummy.x-x)<115&&Math.abs(y-floor)<80&&!(action==='mega'&&clock<actionUntil)&&!superLock()){if(clock<=parryUntil){parrySuccess();hit(10);effects.push({x,y:y-175,t:550,label:'PARRY! +10'})}else{hp=clamp(hp-10,0,maxHp);stunUntil=clock+500;action='';actionUntil=0;if(selectedCharacter==='wesley')wesleyHurtSound();if(pendingShot){clearTimeout(pendingShot);pendingShot=null}effects.push({x,y:y-160,t:550,label:'-10 VIDA'});effects.push({x,y:y-185,t:500,label:'ATORDOADO'});if(hp===0){if(selectedMode==='vs')endRound(1);else{hp=maxHp;effects.push({x,y:y-190,t:950,label:'TREINO REINICIADO'})}}}}}}dummy.attackAnim=Math.max(0,dummy.attackAnim-dt);for(let s of shots){if(s.homing&&dummyMode!=='none'&&dummy.hp>0){let targetX=dummy.x,targetY=floor-90;let dx=targetX-s.x,dy=targetY-s.y,dist=Math.hypot(dx,dy);if(s.spr&&Math.abs(dx)>4)s.dir=dx>0?1:-1;if(dist>0){let speed=660;let step=Math.min(speed*dt,dist);s.x+=dx/dist*step;s.y+=dy/dist*step;}}else{s.x+=s.vx*dt*60;}s.life-=dt*1000;if(dummyMode!=='none'&&Math.abs(s.x-dummy.x)<s.size/2+22&&Math.abs(s.y-(floor-90))<70&&s.life>0){hit(s.damage);if(s.wmega){zImpacts.push({t:clock,x:dummy.x,y:floor-90,k:2});zShake=Math.max(zShake,12)}s.life=0}}shots=shots.filter(s=>s.life>0&&s.x>0&&s.x<960);effects.forEach(e=>{e.t-=dt*1000;e.y-=dt*15});effects=effects.filter(e=>e.t>0);dummy.flash=Math.max(0,dummy.flash-dt*1000);scareHoldTick();if(clock>=actionUntil)action='';if(window.storyHook)storyHook(dt);draw();drawBanner();requestAnimationFrame(tick)}requestAnimationFrame(tick);
+playerCliffDropTick();charging=held.has('charge')&&!moving&&fightLive()&&!(selectedCharacter==='zusk'&&action==='mega'&&clock<actionUntil)&&!scareUltActive('p1')&&!wesUltOn();auraUpdate(charging);if(selectedCharacter==='wesley'){wesleyTauntTick();if(typeof wesleyUlt2Tick==='function')wesleyUlt2Tick()}if(charging){energy=clamp(energy+15*dt,0,100);chargeTick++}if(AI_ON()){aiStep(dt)}dummyCliffDropTick(dt);if(!AI_ON()&&dummyMode==='attack'&&dummy.hp>0&&fightLive()){dummy.attackTimer+=dt;if(dummy.attackTimer>=3){dummy.attackTimer-=3;dummy.attackAnim=.32;if(Math.abs(dummy.x-x)<115&&Math.abs(y-floor)<80&&!(action==='mega'&&clock<actionUntil)&&!superLock()){if(clock<parryUntil){parrySuccess();hit(10);effects.push({x,y:y-175,t:550,label:'PARRY! +10'})}else{hp=clamp(hp-10,0,maxHp);stunUntil=clock+500;action='';actionUntil=0;if(selectedCharacter==='wesley')wesleyHurtSound();if(pendingShot){clearTimeout(pendingShot);pendingShot=null}effects.push({x,y:y-160,t:550,label:'-10 VIDA'});effects.push({x,y:y-185,t:500,label:'ATORDOADO'});if(hp===0){if(selectedMode==='vs')endRound(1);else{hp=maxHp;effects.push({x,y:y-190,t:950,label:'TREINO REINICIADO'})}}}}}}dummy.attackAnim=Math.max(0,dummy.attackAnim-dt);for(let s of shots){if(s.homing&&dummyMode!=='none'&&dummy.hp>0){let targetX=dummy.x,targetY=(P2_HUMAN()?(dummy.y||floor):floor)-90;let dx=targetX-s.x,dy=targetY-s.y,dist=Math.hypot(dx,dy);if(s.spr&&Math.abs(dx)>4)s.dir=dx>0?1:-1;if(dist>0){let speed=660;let step=Math.min(speed*dt,dist);s.x+=dx/dist*step;s.y+=dy/dist*step;}}else{s.x+=s.vx*dt*60;}s.life-=dt*1000;if(dummyMode!=='none'&&Math.abs(s.x-dummy.x)<s.size/2+22&&Math.abs(s.y-((P2_HUMAN()?(dummy.y||floor):floor)-90))<70&&s.life>0){hit(s.damage);if(s.wmega){zImpacts.push({t:clock,x:dummy.x,y:floor-90,k:2});zShake=Math.max(zShake,12)}s.life=0}}shots=shots.filter(s=>s.life>0&&s.x>0&&s.x<960);effects.forEach(e=>{e.t-=dt*1000;e.y-=dt*15});effects=effects.filter(e=>e.t>0);dummy.flash=Math.max(0,dummy.flash-dt*1000);scareHoldTick();if(clock>=actionUntil)action='';if(window.storyHook)storyHook(dt);draw();drawBanner();requestAnimationFrame(tick)}requestAnimationFrame(tick);
 
 // Fluxo: Modo -> Personagem -> Cenário -> Jogo
 let menuOpen=true,selectedMode='train',selectedCharacter='zusk',selectedStage='forest',menuPage='home';
 const overlay=document.getElementById('menuOverlay'),content=document.getElementById('menuContent');
 let soundOn=true,pausedAt=0;
-function resumeGame(){if(pausedAt){const elapsed=performance.now()-pausedAt;actionUntil+=elapsed;parryUntil+=elapsed;if(dummy.parryUntil)dummy.parryUntil+=elapsed;if(parryStartAt>=0)parryStartAt+=elapsed;if(parryHitAt>=0)parryHitAt+=elapsed;if(zMegaStart>=0)zMegaStart+=elapsed;if(typeof wesleyUlt2Shift==='function')wesleyUlt2Shift(elapsed);if(typeof wesleyDummyShift==='function')wesleyDummyShift(elapsed);if(zTpStart>=0)zTpStart+=elapsed;zImpacts.forEach(m=>m.t+=elapsed);pausedAt=0;}menuOpen=false;overlay.classList.add('hidden');held.clear();last=0;}
-function openPause(){if(matchOver)return;if(!window.hasStarted){showMenu('home');return;}pausedAt=performance.now();showMenu('pause');}
+function resumeGame(){document.body.classList.toggle('pvp2',P2_HUMAN());if(pausedAt){const elapsed=performance.now()-pausedAt;actionUntil+=elapsed;parryUntil+=elapsed;if(dummy.parryUntil)dummy.parryUntil+=elapsed;if(parryStartAt>=0)parryStartAt+=elapsed;if(parryHitAt>=0)parryHitAt+=elapsed;if(zMegaStart>=0)zMegaStart+=elapsed;if(typeof wesleyUlt2Shift==='function')wesleyUlt2Shift(elapsed);if(typeof wesleyDummyShift==='function')wesleyDummyShift(elapsed);if(typeof player2PauseShift==='function')player2PauseShift(elapsed);scareUltResume(elapsed);if(zTpStart>=0)zTpStart+=elapsed;zImpacts.forEach(m=>m.t+=elapsed);pausedAt=0;}menuOpen=false;overlay.classList.add('hidden');held.clear();if(typeof player2StopInput==='function')player2StopInput();last=0;}
+function openPause(){if(matchOver)return;scareUltPause();if(!window.hasStarted){showMenu('home');return;}pausedAt=performance.now();showMenu('pause');}
 const IC=(()=>{const o='<svg viewBox="0 0 24 24" fill="#ffd34a" stroke="#5a2a10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round">',c='</svg>';return{
  play:o+'<path d="M7 4.5v15l12-7.5z"/>'+c,
  pause:o+'<rect x="5.5" y="4.5" width="4.6" height="15" rx="1.3"/><rect x="13.9" y="4.5" width="4.6" height="15" rx="1.3"/>'+c,
@@ -799,11 +827,12 @@ const CHARACTER_UNLOCK_KEY='arena_character_unlocks';
 function characterUnlocks(){
  let saved={};try{saved=JSON.parse(localStorage.getItem(CHARACTER_UNLOCK_KEY)||'{}')||{}}catch(e){}
  const completedChapter2=storyLoad().some(d=>d&&Math.floor(Number(d.chapter)||1)>=3);
- return {scarecrow:!!saved.scarecrow||completedChapter2,wesley:!!saved.wesley||completedChapter2};
+ const completedChapter3=storyLoad().some(d=>d&&Math.floor(Number(d.chapter)||1)>=4);
+ return {scarecrow:!!saved.scarecrow||completedChapter2,wesley:!!saved.wesley||completedChapter2,gogo:!!saved.gogo||completedChapter3};
 }
 function characterUnlocked(id){return id==='zusk'||!!characterUnlocks()[id]}
 function unlockStoryCharacter(id){
- if(id!=='scarecrow'&&id!=='wesley')return false;
+ if(id!=='scarecrow'&&id!=='wesley'&&id!=='gogo')return false;
  const flags=characterUnlocks();if(flags[id])return false;
  flags[id]=true;
  try{localStorage.setItem(CHARACTER_UNLOCK_KEY,JSON.stringify(flags))}catch(e){}
@@ -815,7 +844,7 @@ let storyMapSlot=null;
 const STORY_MAP_POINTS=[
  {id:1,name:'Floresta Serena',tag:'O despertar',img:'mapas/floresta-serena.jpg',x:17,y:62},
  {id:2,name:'O Milharal',tag:'Novos aliados',img:'mapas/milharal.png',x:50,y:41},
- {id:3,name:'A Cidade',tag:'Próximo destino',img:null,x:83,y:62}
+ {id:3,name:'Cidade da Zenga',tag:'A torrada desaparecida',img:'mapas/cidade-normal.png',x:83,y:62}
 ];
 function storyPlayable(id){return typeof FASES!=='undefined'&&FASES.some(f=>f.id===id)}
 function storyChapter(d){return Math.max(1,Math.floor(Number(d?.chapter)||1))}
@@ -886,16 +915,17 @@ function storySlotAction(i,act){
  }else return;
  openStoryMap(i);
 }
-function showMenu(page){menuOpen=true;menuPage=page;overlay.classList.remove('hidden');overlay.classList.toggle('homeScreen',page==='home');overlay.classList.toggle('stageScreen',page==='stage');overlay.classList.toggle('charScreen',page==='character'||page==='opponent');overlay.classList.toggle('panelScreen',page==='pause'||page==='combos'||page==='config'||page==='story'||page==='vsmode');overlay.classList.toggle('storyMapScreen',page==='storyMap');held.clear();
+function showMenu(page){menuOpen=true;document.body.classList.remove('pvp2');menuPage=page;overlay.classList.remove('hidden');overlay.classList.toggle('homeScreen',page==='home');overlay.classList.toggle('stageScreen',page==='stage');overlay.classList.toggle('charScreen',page==='character'||page==='opponent');overlay.classList.toggle('panelScreen',page==='pause'||page==='combos'||page==='config'||page==='story'||page==='vsmode');overlay.classList.toggle('storyMapScreen',page==='storyMap');held.clear();if(typeof player2StopInput==='function')player2StopInput();
  if(page==='pause')content.innerHTML=`<h2><i class="hi">${IC.pause}</i>Jogo pausado</h2>${selectedMode==='train'?`<div class="settingsRow"><label for="pauseDummy">Manequim</label><select id="pauseDummy">${[...document.getElementById('dummyMode').options].map(o=>`<option value="${o.value}"${o.value===dummyMode?' selected':''}>${o.text}</option>`).join('')}</select></div><div class="settingsRow"><label for="pauseOpp">Personagem do manequim</label><select id="pauseOpp">${CHARACTERS.filter(c=>characterUnlocked(c.id)).map(c=>`<option value="${c.id}"${c.id===dummyChar?' selected':''}>${c.name}</option>`).join('')}</select></div>`:''}<div class="settingsRow"><label for="touchToggle">Controles na tela</label><input type="checkbox" id="touchToggle"${touchOn?' checked':''}></div><div class="menuStack"><button class="primary" data-next="resume"><i class="gi">${IC.play}</i><span>Continuar</span></button><button data-next="combos"><i class="gi">${IC.list}</i><span>Lista de combos</span></button><button class="secondary" data-next="exit"><i class="gi">${IC.exit}</i><span>Sair para o menu</span></button></div>`;
- if(page==='combos')content.innerHTML=`<h2><i class="hi">${IC.list}</i>Combos do ${CHARACTERS.find(c=>c.id===selectedCharacter)?.name||'Lutador'}</h2><p class="menuSmall">Aperte os dois botões juntos, em qualquer ordem (até 0,12 s de diferença; Pulo + R até 0,2 s), mantendo os dois pressionados.</p><div class="comboScroll"><table class="comboTable"><thead><tr><th>Golpe</th><th>Comando</th><th>Energia</th><th>Dano</th></tr></thead><tbody>${[['Soco','E',0,5],['Chute','Q',0,5],['Tiro comum','R',30,15],(selectedCharacter==='scarecrow'?['Super Soco (segurar)','E + R',5,'5 por golpe']:['Super Soco','E + R',40,selectedCharacter==='wesley'?'11 x 3':20]),['Super Chute','Q + R',40,20],...(selectedCharacter==='wesley'?[['Provocação','Trás + R',0,'+40 energia'],['Provocação','Frente + R',0,'+40 energia']]:[['Teleporte para trás','Trás + R',30,'—'],['Teleporte para frente','Frente + R',30,'—']]),['Super Tiro Teleguiado','W + R',60,30],['Parry','S + R',20,10],['Super Mega Ultra Tiro','R + R',100,selectedCharacter==='scarecrow'?60:selectedCharacter==='wesley'?((specs.mega&&specs.mega.dmg)||'?'):'3 x 25']].map(a=>`<tr>${a.map(v=>`<td>${v}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="menuStack"><button class="secondary" data-next="pause"><i class="gi">${IC.back}</i><span>Voltar à pausa</span></button><button class="primary" data-next="resume"><i class="gi">${IC.play}</i><span>Continuar</span></button></div>`;
+ if(page==='combos')content.innerHTML=`<h2><i class="hi">${IC.list}</i>Combos do ${CHARACTERS.find(c=>c.id===selectedCharacter)?.name||'Lutador'}</h2><p class="menuSmall">Aperte os dois botões juntos, em qualquer ordem (até 0,12 s de diferença; Pulo + R até 0,2 s), mantendo os dois pressionados.</p><div class="comboScroll"><table class="comboTable"><thead><tr><th>Golpe</th><th>Comando</th><th>Energia</th><th>Dano</th></tr></thead><tbody>${[['Soco','E',0,5],['Chute','Q',0,5],['Tiro comum','R',30,15],(selectedCharacter==='scarecrow'?['Super Soco (segurar)','E + R',5,'5 por golpe']:['Super Soco','E + R',40,selectedCharacter==='wesley'?'11 x 3':20]),['Super Chute','Q + R',40,20],...(selectedCharacter==='wesley'?[['Provocação','Trás + R',0,'+40 energia'],['Provocação','Frente + R',0,'+40 energia']]:[['Teleporte para trás','Trás + R',30,'—'],['Teleporte para frente','Frente + R',30,'—']]),['Super Tiro Teleguiado','W + R',60,30],['Parry','S + R',20,10],[selectedCharacter==='scarecrow'?'Revoada do Fim (só vida vermelha, 15s)':'Super Mega Ultra Tiro','R + R',100,selectedCharacter==='scarecrow'?'100 × 1,5 = 150':selectedCharacter==='wesley'?((specs.mega&&specs.mega.dmg)||'?'):'3 x 25']].map(a=>`<tr>${a.map(v=>`<td>${v}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="menuStack"><button class="secondary" data-next="pause"><i class="gi">${IC.back}</i><span>Voltar à pausa</span></button><button class="primary" data-next="resume"><i class="gi">${IC.play}</i><span>Continuar</span></button></div>`;
  if(page==='home')content.innerHTML=`<div class="homeArt" aria-hidden="true"></div><div class="homeTitle">King of Gangues Bangues<small>JOGO DE LUTA</small></div><button class="homeHotspot story" aria-label="Modo História" title="Modo História" data-next="story"></button><button class="homeHotspot vs" aria-label="Versus" title="Versus" data-next="mode" data-mode="vs"></button><button class="homeHotspot train" aria-label="Treino" title="Treino" data-next="mode" data-mode="train"></button><button class="homeHotspot config" aria-label="Opções" title="Opções" data-next="config"></button>`;
  if(page==='story')content.innerHTML=renderStory();
  if(page==='storyMap')content.innerHTML=renderStoryMap();
- if(page==='vsmode')content.innerHTML=`<h2><i class="hi">${IC.duo}</i>Versus</h2><p class="menuSmall" style="text-align:center">Contra quem você quer lutar?</p><div class="menuStack"><button class="primary" data-next="character" data-vs="ai"><i class="gi">${IC.cpu}</i><span>Contra a IA</span></button><button data-next="character" data-vs="player"><i class="gi">${IC.duo}</i><span>Contra outro jogador</span></button><button class="secondary" data-next="home"><i class="gi">${IC.back}</i><span>Voltar</span></button></div><p class="menuSmall"><b>P1:</b> W A S D mover · E soco · Q chute · R especial · Shift carregar<br><b>P2:</b> ← → mover · P soco · O chute · I especial · L carregar</p>`;
+ if(page==='vsmode')content.innerHTML=`<h2><i class="hi">${IC.duo}</i>Versus</h2><p class="menuSmall" style="text-align:center">Contra quem você quer lutar?</p><div class="menuStack"><button class="primary" data-next="character" data-vs="ai"><i class="gi">${IC.cpu}</i><span>Contra a IA</span></button><button data-next="character" data-vs="player"><i class="gi">${IC.duo}</i><span>Contra outro jogador</span></button><button class="secondary" data-next="home"><i class="gi">${IC.back}</i><span>Voltar</span></button></div><p class="menuSmall"><b>P1:</b> W A S D mover · E soco · Q chute · R especial · Shift carregar<br><b>P2:</b> ← → mover · ↑ pular · ↓ agachar · P soco · O chute · I especial · L carregar<br><b>Combos P2:</b> P+I, O+I, ↑+I, ↓+I, ←/→+I e I+I (ultimate)</p>`;
  if(page==='character'||page==='opponent')renderCharacter();
  if(page==='stage')renderStage();
- if(page==='config')content.innerHTML=`<h2><i class="hi">${IC.gear}</i>Configurações</h2><div class="settingsRow"><label for="effectsToggle">Efeitos visuais de energia</label><input type="checkbox" id="effectsToggle" ${effectsEnabled?'checked':''}></div><p class="menuSmall">Controles P1: W/A/S/D para mover, Q chute, E soco, Shift carrega, R especial. TimeSpot: 0,5s.<br>Controles P2 (modo contra jogador): ← → mover, O chute, P soco, L carrega, I especial.</p><div class="menuStack"><button class="secondary" data-next="home"><i class="gi">${IC.back}</i><span>Voltar</span></button></div>`;
+ if(page==='combos'&&P2_HUMAN())content.querySelector('.comboScroll')?.insertAdjacentHTML('afterend',renderPlayer2Combos());
+ if(page==='config')content.innerHTML=`<h2><i class="hi">${IC.gear}</i>Configurações</h2><div class="settingsRow"><label for="effectsToggle">Efeitos visuais de energia</label><input type="checkbox" id="effectsToggle" ${effectsEnabled?'checked':''}></div><p class="menuSmall">Controles P1: W/A/S/D para mover, Q chute, E soco, Shift carrega, R especial. TimeSpot: 0,5s.<br>Controles P2 (versus local): setas para mover, ↑ pula, ↓ agacha, O chute, P soco, L carrega, I especial. Combos: P+I, O+I, ↑+I, ↓+I, direção+I e I+I (ultimate).</p><div class="menuStack"><button class="secondary" data-next="home"><i class="gi">${IC.back}</i><span>Voltar</span></button></div>`;
  
 }
 let effectsEnabled=true;
