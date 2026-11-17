@@ -26,6 +26,8 @@ Depois abra `http://localhost:8000/` no navegador.
 - `js/personagens/catalogo.js`: roster de personagens.
 - `js/personagens/zusk.js`, `espantalho.js`, `wesley-mafioso.js`: referências às artes individuais.
 - `js/config/combate.js`: **alcance e dano dos ataques e vida colorida de cada lutador**.
+- `js/modo-historia.js`: **fases do Modo História** (lista `FASES`, com passos de título, fala, andar, transição e fim).
+- `js/personagens/golem-roxo.js`: Golem Roxo (chefe da Fase 1; alcance, dano e velocidade no topo do arquivo).
 - `js/mapas.js`: nomes, descrições, ordem e imagens de todos os mapas.
 - `js/audio-arquivos.js`: caminhos dos sons.
 - `personagens/`: sprites (atlas e retratos) por lutador.
@@ -38,3 +40,64 @@ Depois abra `http://localhost:8000/` no navegador.
 O tamanho do **index.html** é pequeno porque os recursos foram extraídos. O conjunto de sprites, músicas e fundos continua ocupando espaço no disco. O navegador pode cachear os arquivos separadamente.
 
 Os arquivos JavaScript usam `<script>` clássico para manter compatibilidade com o código original e conservar as dependências globais. Não converta cada arquivo para `type="module"` isoladamente sem atualizar a arquitetura.
+
+## Correção do Modo História (16/11/2026)
+
+- Corrigido o conflito entre os botões dos saves do Modo História e os botões de seleção de mapas: os saves usam `data-save-slot` e a seleção de mapas só processa `data-slot` dentro da própria tela de mapas.
+- **Começar / Novo jogo:** inicia a Fase 1. **Continuar:** abre a fase associada ao save, quando disponível.
+- Após a vitória sobre o Golem Roxo, o save é atualizado para o Capítulo 2. Como o Capítulo 2 ainda não está implementado, a interface agora exibe **Rejogar fase 1** em vez de oferecer um botão Continuar que não pode iniciar uma fase nova. Rejogar não apaga o progresso do save.
+- Durante os diálogos, clique no balão ou aperte **Enter**, **Espaço** ou **Z** para avançar.
+- Saves ficam guardados no armazenamento local do navegador. Usar um servidor estático (por exemplo, Live Server) mantém a origem estável para carregar arquivos e recuperar os saves.
+
+## Batalha do Golem Roxo em duas etapas (16/11/2026)
+
+No Modo História, a **primeira luta** do Golem Roxo tem 10 HP verde + 20 HP amarela + 20 HP vermelha (50 no total). Ao vencer, o Golem cai e Zusk diz: “Isso ae viu doutoutor torronio vc perdeu e minha floresta ta salva”. O Golem então se levanta, recupera 500 HP em **uma barra vermelha** e grita “GAARRRRRBUUUUGAAAAA”. Só depois do grito a **segunda luta** começa, com os 500 HP. A fase e o progresso do save só são concluídos após a vitória nessa segunda luta.
+
+Se Zusk perder, o botão **Recomeçar** refaz a etapa da luta em que estava. O valor original de vida do Golem nos outros modos é restaurado ao sair da história.
+
+## Martelada do Golem Roxo (sprites novos)
+
+- A arte original com os **5 quadros do martelo** está em `personagens/golem-roxo/martelada.png`, sem alteração da ilustração recebida. O jogo carrega a cópia `martelada-jogo.webp` com as bordas das partículas suavizadas, evitando cortes retangulares entre quadros.
+- O Golem utiliza a sequência durante o **golpe forte** (tipo `kick`, controlado pela IA): preparação, martelo levantado, descida, impacto e recuperação. O golpe básico continua disponível.
+- O dano acontece no **quadro do impacto**, após a preparação do golpe (telegráfico), com tremor de câmera e onda de poeira no chão.
+- A IA prioriza marteladas em curta distância. A animação funciona nas **duas lutas do Modo História** e em confrontos com o Golem nos demais modos.
+- As configurações de escala, quadros e velocidade ficam no topo de `js/personagens/golem-roxo.js`.
+
+
+## Desfecho da Fase 1 + grito do Golem (nova atualização)
+
+- O arquivo `audio/golem-ressurgimento.mp3` é o som `garburgars.MP3` enviado pelo autor, incorporado integralmente; reproduz ao Golem se levantar, junto ao balão **GAARRRRRBUUUUGAAAAA**. A cena de grito dura ~8 s para que o áudio toque inteiro antes da segunda luta.
+- **Primeira luta:** 10 verde / 20 amarela / 20 vermelha. Se perder, ainda aparece o botão Recomeçar; se vencer, Zusk comemora e o Golem revive com 500 de vida vermelha.
+- **Segunda luta:** ao perder, o jogo **não mostra Game Over**. Zusk desmaia, a tela escurece, ele desperta na **Floresta Contaminada** (já presente em `mapas/floresta-contaminada.png`), corre até o **Precipício Contaminado** (`mapas/precipicio-contaminado.png`), é surpreendido pelo Golem, recebe um soco e despenca do penhasco. A cena termina com o título **FIM DA FASE 1**.
+- O save avança para a fase 2 **depois de assistir à cena final**, não antes. Se o jogador derrotar o Golem de 500 HP, permanece o final alternativo por vitória, concluindo igualmente a fase 1.
+- Tudo é controlado por passos no arquivo `js/modo-historia.js`, sem alterar a seleção de mapas, o jogo versus nem o modo treino.
+
+
+## Mapa de fases do Modo História
+
+- Abra **Modo História**, escolha um dos **3 saves**, então **Mapa de fases**. Saves novos também abrem o mapa antes de iniciar a primeira fase.
+- O mapa apresenta **Floresta Serena (Fase 1)**, **Milharal (Fase 2)** e **Cidade (Fase 3)**, conectados visualmente. Fases concluídas ficam verdes e podem ser **rejogadas**. A fase atual fica dourada e, se implementada, pode ser iniciada; fases futuras ficam bloqueadas.
+- As fases **1 e 2** estão jogáveis. O Milharal fica disponível após concluir a Fase 1; a Cidade é o próximo destino, ainda sem fase jogável.
+- A conclusão atualiza `arena_story_slots` no `localStorage`. Rejogar uma fase concluída não diminui o capítulo alcançado: o avanço usa `Math.max`.
+- O retorno ao fim da Fase 1 agora é para o mapa do save escolhido.
+- Para adicionar um capítulo, insira-o em `FASES` de `js/modo-historia.js`. As entradas visuais do mapa estão em `STORY_MAP_POINTS` no `js/jogo.js`.
+
+
+## Capítulo 2 — O Milharal (implementado)
+
+- No Modo História, conclua a **Fase 1** num save e escolha **O Milharal** no mapa. Não é necessário criar um novo save.
+- Zusk desperta no milharal e vê o Espantalho parado. Os diálogos reproduzem as falas fornecidas e o Espantalho torna-se o primeiro inimigo.
+- **Perder para o Espantalho:** a luta reinicia automaticamente, sem perder o progresso do save.
+- **Vencer o Espantalho:** inicia os diálogos de aliança, Wesley grita de longe, entra no cenário e começa a segunda luta.
+- **Wesley Mafioso:** ao chegar a **30 HP ou menos**, tem **50% de chance** de ativar a Ultimate Mega Ultra 2 da Dama Rosa, **uma única tentativa de sorteio por luta**. Se a chance der certo, golpes que ultrapassariam 30 HP param momentaneamente em 30 para a animação. Se não der certo, recebe dano normalmente e pode ser derrotado. Ele não ativa Dama Rosa pela IA comum nesta luta fora desse sorteio. As novas tentativas contra Wesley ganham um novo sorteio.
+- **Perder para Wesley:** Zusk fala «MORRI», Wesley responde «7.7.7 CARALHO», aparece «DERROTA · TENTE NOVAMENTE» e o jogo reinicia somente a luta do Wesley.
+- **Vencer Wesley:** Zusk pede ajuda, Wesley concorda em ir para a cidade da Zenga e a conclusão registra **Capítulo 3** no save. A Cidade permanece visível no mapa como próxima fase, ainda em desenvolvimento.
+- Os saves são independentes. Rejogar os capítulos 1 e 2 não reduz o avanço salvo.
+
+## Desbloqueio de personagens secretos
+
+- **Zusk** permanece disponível desde o início. **Espantalho** e **Wesley Mafioso** aparecem em cinza, com cadeado e nome `?????`, na seleção de personagem (inclusive seleção de P2/manequim).
+- A vitória contra o Espantalho no Capítulo 2 o desbloqueia imediatamente; a vitória contra Wesley o desbloqueia separadamente. Perder não desbloqueia. A História continua usando os personagens como adversários normalmente.
+- A conquista é registrada no `localStorage` em `arena_character_unlocks`, independente dos 3 saves. Rejogar, recomeçar um save ou mudar de modo não revoga os personagens.
+- Compatibilidade com saves anteriores: caso um save antigo já tenha concluído o Capítulo 2 (`chapter >= 3`), ambos já aparecerão desbloqueados.
+- Seleção por mouse, toque ou teclado respeita os cadeados; os bloqueios também se aplicam aos personagens disponíveis no modo treino e nas lutas normais.
