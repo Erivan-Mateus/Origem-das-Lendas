@@ -14,6 +14,7 @@ const STAGE_CLIFF_REAPPEAR_X=125;
 const STAGE_CLIFF_FALL_DEPTH=95; // distância vertical percorrida antes do teleporte
 let playerCliffFalling=false;
 function stageHazardDamage(id=selectedStage){
+ if(selectedMode==='story')return 0; // no modo história o penhasco é só cenário
  return id==='cliff-edge'?25:id==='cliff-contaminated'?50:0;
 }
 function playerCliffDropBegin(){
@@ -71,8 +72,13 @@ function renderStage(){
 }
 function applySelectedStage(){const m=STAGES.find(m=>m.id===selectedStage);if(m&&stageImage.src!==m.img)stageImage.src=m.img}
 content.addEventListener('click',e=>{
- const slot=e.target.closest('[data-slot]');if(slot){selectedStage=slot.dataset.slot;renderStage();return}
- const dot=e.target.closest('[data-dot]');if(dot){stagePage=+dot.dataset.dot;renderStage();return}
+ // Somente a tela de mapas interpreta data-slot. Os saves da história
+ // têm seus próprios data-save-slot e não podem acionar a seleção de cenário.
+ if(!menuOpen||menuPage!=='stage')return;
+ const slot=e.target.closest('button.sx-hit[data-slot]');
+ if(slot){selectedStage=slot.dataset.slot;renderStage();return}
+ const dot=e.target.closest('button.sx-dot[data-dot]');
+ if(dot){stagePage=+dot.dataset.dot;renderStage()}
 });
 // Teclado na tela de mapas: setas escolhem, Enter confirma (as setas não movem o boneco por trás do menu)
 document.addEventListener('keydown',e=>{
@@ -84,12 +90,37 @@ document.addEventListener('keydown',e=>{
  if(e.key==='Enter'){e.preventDefault();e.stopImmediatePropagation();startSelectedGame()}
 },true);
 
-content.addEventListener('click',e=>{const btn=e.target.closest('button[data-next]');if(!btn)return;if(btn.dataset.slot!==undefined){storySlotAction(btn.dataset.slot,btn.dataset.act);return}if(btn.dataset.mode)selectedMode=btn.dataset.mode;if(btn.dataset.vs)vsOpponent=btn.dataset.vs;const next=btn.dataset.next;if(next==='story')storyMsg='';if(next==='mode'){showMenu(selectedMode==='vs'?'vsmode':'character');return}if(next==='play'){startSelectedGame();return}if(next==='resume'){resumeGame();return}if(next==='exit'){pausedAt=0;window.hasStarted=false;showMenu('home');return}showMenu(next)});
+content.addEventListener('click',e=>{
+ const btn=e.target.closest('button[data-next]');if(!btn)return;
+ if(btn.dataset.next==='storySlot'){
+  if(menuPage==='story')storySlotAction(btn.dataset.saveSlot,btn.dataset.act);
+  return;
+ }
+ if(btn.dataset.next==='storyMapStage'){
+  storyMapAction(btn.dataset.phase);
+  return;
+ }
+ if(btn.dataset.mode)selectedMode=btn.dataset.mode;
+ if(btn.dataset.vs)vsOpponent=btn.dataset.vs;
+ const next=btn.dataset.next;
+ if(next==='story')storyMsg='';
+ if(next==='mode'){showMenu(selectedMode==='vs'?'vsmode':'character');return}
+ if(next==='play'){startSelectedGame();return}
+ if(next==='resume'){resumeGame();return}
+ if(next==='exit'){pausedAt=0;window.hasStarted=false;if(typeof window.storyAbort==='function')window.storyAbort();showMenu('home');return}
+ showMenu(next)
+});
 content.addEventListener('change',e=>{if(e.target.id==='effectsToggle')effectsEnabled=e.target.checked});
-function startSelectedGame(){applySelectedStage();applyCharacterSpecs();pausedAt=0;window.hasStarted=true;dummyMode=selectedMode==='vs'?'attack':'idle';document.getElementById('dummyMode').value=dummyMode;x=240;y=floor;vy=0;face=1;refillLife();energy=0;roundTime=99;roundWins=[0,0];round=1;roundWinner=-1;hideEndOverlay();resetFighterState();dummy.flash=0;dummy.attackTimer=0;dummy.attackAnim=0;shots=[];effects=[];held.clear();menuOpen=false;overlay.classList.add('hidden');if(selectedMode==='vs'){roundState='intro';rsTimer=1.6;showBanner('ROUND 1',1.6)}else{roundState='fight';banner.t=0}}
+function startSelectedGame(){
+ const insideStory=typeof window.storyState==='function'&&!!window.storyState();
+ if(!insideStory){
+  if(!characterUnlocked(selectedCharacter))selectedCharacter='zusk';
+  if(!characterUnlocked(dummyChar))dummyChar='zusk';
+ }
+ applySelectedStage();applyCharacterSpecs();pausedAt=0;window.hasStarted=true;dummyMode=selectedMode==='vs'?'attack':'idle';document.getElementById('dummyMode').value=dummyMode;x=240;y=floor;vy=0;face=1;refillLife();energy=0;roundTime=99;roundWins=[0,0];round=1;roundWinner=-1;hideEndOverlay();resetFighterState();dummy.flash=0;dummy.attackTimer=0;dummy.attackAnim=0;shots=[];effects=[];held.clear();menuOpen=false;overlay.classList.add('hidden');if(selectedMode==='vs'){roundState='intro';rsTimer=1.6;showBanner('ROUND 1',1.6)}else{roundState='fight';banner.t=0}}
 // Botões da tela de fim de partida: Recomeçar / Escolher personagens / Menu
 document.getElementById('endOverlay').addEventListener('click',e=>{const b=e.target.closest('[data-end]');if(!b)return;const a=b.dataset.end;
-  if(a==='restart'){startSelectedGame();return}
+  if(a==='restart'){if(window.storyRetryBattle&&storyRetryBattle())return;startSelectedGame();return}
   hideEndOverlay();pausedAt=0;window.hasStarted=false;banner.t=0;showMenu(a==='chars'?'character':'home')});
 document.getElementById('menuButton').addEventListener('click',()=>{if(menuOpen&&window.hasStarted)resumeGame();else openPause()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();if(menuOpen&&window.hasStarted)resumeGame();else openPause()}},true);

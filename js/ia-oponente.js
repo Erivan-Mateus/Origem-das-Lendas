@@ -218,7 +218,7 @@
       const me = s.self, en = s.enemy, R = s.specs;
       const can = k => R[k] && me.energy >= R[k].cost && !(this._saving && k !== 'parry'); // guardando energia: só parry gasta
 
-      if (this._ult && this._ult.go && me.canAct) return 'mega';
+      if (this._ult && this._ult.go && me.canAct && !(window.storyWesleyForceUlt2 && me.zone === 'red')) return 'mega';
       if (this._retreat > 0) return 'retreat';
 
       // jogador começou um golpe perto: parry, recuo ou nada
@@ -267,14 +267,14 @@
       const full = R.mega && me.energy >= R.mega.cost;
       if (full && !this._wasFull) {
         const zone = me.zone;
-        this._ult = { zone, go: Math.random() < (zone === 'red' ? RED_ULT_CHANCE : P.gunChance) };
+        this._ult = { zone, go: !(window.storyWesleyForceUlt2 && zone === 'red') && Math.random() < (zone === 'red' ? RED_ULT_CHANCE : P.gunChance) };
         this._saving = false; // chegou a 100: sorteou; se não saiu, gasta nos outros especiais
       }
       if (!full) this._ult = null;
       this._wasFull = full;
       // mudou de faixa de vida depois do sorteio: sorteia de novo com a regra da faixa nova
       if (this._ult && this._ult.zone !== me.zone) {
-        this._ult = { zone: me.zone, go: Math.random() < (me.zone === 'red' ? RED_ULT_CHANCE : P.gunChance) };
+        this._ult = { zone: me.zone, go: !(window.storyWesleyForceUlt2 && me.zone === 'red') && Math.random() < (me.zone === 'red' ? RED_ULT_CHANCE : P.gunChance) };
       }
 
       if (this._think <= 0) {
@@ -326,7 +326,7 @@
         }
 
         case 'mega':
-          if (this._ult && this._ult.go && me.energy >= R.mega.cost) {
+          if (this._ult && this._ult.go && me.energy >= R.mega.cost && !(window.storyWesleyForceUlt2 && me.zone === 'red')) {
             if (me.canAct) { attack = 'mega'; this._ult = null; this._plan = 'approach'; this._gap = 2; }
           } else this._plan = 'approach';
           break;

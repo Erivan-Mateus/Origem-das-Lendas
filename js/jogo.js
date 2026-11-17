@@ -21,7 +21,15 @@ function scareHoldTick(){
   else stop()
  }
 }
-function hit(dmg,unparry){if(dummyMode==='none'||dummy.hp<=0||!fightLive())return;if(typeof wesleyDummyImmune==='function'&&wesleyDummyImmune()){effects.push({x:dummy.x,y:floor-175,t:450,label:'IMUNE'});return}if(selectedMode==='vs'&&!unparry&&clock<(dummy.parryUntil||0)){dummyParried();return}dummy.hp=clamp(dummy.hp-dmg,0,dummyMax);dummy.flash=170;if(dummyChar==='wesley')wesleyHurtSound();if(selectedMode==='vs'){dummy.stunUntil=clock+250;if(dmg>=10)dummy.pend=null}effects.push({x:dummy.x,y:floor-85,t:350,label:'-'+dmg});if(dummy.hp===0){if(selectedMode==='vs'){endRound(0)}else{effects.push({x:dummy.x,y:floor-160,t:1000,label:'ALVO DERROTADO'});setTimeout(()=>{if(dummy.hp===0)dummy.hp=dummyMax},1200)}}}
+function hit(dmg,unparry){if(dummyMode==='none'||dummy.hp<=0||!fightLive())return;if(typeof wesleyDummyImmune==='function'&&wesleyDummyImmune()){effects.push({x:dummy.x,y:floor-175,t:450,label:'IMUNE'});return}if(selectedMode==='vs'&&!unparry&&clock<(dummy.parryUntil||0)){dummyParried();return}let newHp=clamp(dummy.hp-dmg,0,dummyMax);
+ // Aos 30 HP, Wesley sorteia UMA vez (50%) se usará Dama Rosa neste confronto.
+ // Só impede que um golpe ultrapasse os 30 HP quando a ultimate foi sorteada.
+ // Se não foi sorteada, o dano segue normalmente, inclusive até K.O.
+ if(dummyChar==='wesley'&&window.storyWesleyForceUlt2&&!window.storyWesleyUlt2Decided&&dummy.hp>30&&newHp<=30){
+  const usarDamaRosa=typeof window.storyDecideWesleyUlt2==='function'&&window.storyDecideWesleyUlt2();
+  if(usarDamaRosa&&newHp<30)newHp=30;
+ }
+ dummy.hp=newHp;dummy.flash=170;if(dummyChar==='wesley')wesleyHurtSound();if(selectedMode==='vs'){dummy.stunUntil=clock+250;if(dmg>=10&&dummyChar!=='golem')dummy.pend=null}effects.push({x:dummy.x,y:floor-85,t:350,label:'-'+dmg});if(dummyChar==='wesley'&&window.storyWesleyForceUlt2&&window.storyWesleyUlt2Approved&&dummy.hp>0&&dummy.hp<=30&&typeof window.storyTriggerWesleyUlt2==='function')window.storyTriggerWesleyUlt2();if(dummy.hp===0){if(window.storyBossPhase&&dummyChar==='golem')dummy.storyPose='fallen';if(selectedMode==='vs'){endRound(0)}else{effects.push({x:dummy.x,y:floor-160,t:1000,label:'ALVO DERROTADO'});setTimeout(()=>{if(dummy.hp===0)dummy.hp=dummyMax},1200)}}}
 function start(name){if(playerCliffFalling)return false;if(selectedCharacter==='zusk'&&action==='mega'&&clock<actionUntil)return false;if(wesUltOn())return false;let a=specs[name];if(selectedCharacter==='wesley'&&(name==='frontTeleport'||name==='backTeleport')&&a)a=wesleyTauntSpec(a);if(clock<stunUntil&&['punch','kick','shot','superPunch','superKick','superShot','mega'].includes(name))return false;if(!a||energy<a.cost||(clock<actionUntil&&!['superPunch','superKick','superShot','parry','frontTeleport','backTeleport','mega'].includes(name)))return false;energy-=a.cost;action=name;actionUntil=clock+a.duration;if(selectedCharacter==='wesley'&&name!=='shot')wesleyStopShotSound();if(selectedCharacter==='wesley'&&name==='punch')wesleyPunchSound();if(selectedCharacter==='wesley'&&(name==='kick'||name==='superKick'))wesleyKickSound();if(name==='punch')playSnd('punch');else if(name==='kick')playSnd('kick');else if(selectedCharacter==='wesley'&&name==='superPunch')wesleySuperPunchSound();else if(selectedCharacter==='wesley'&&name==='superKick')wesleySuperKickSound();else if(name==='superPunch'||name==='superKick')playSuper();else if(selectedCharacter==='zusk'&&(name==='shot'||name==='superShot'||name==='mega'))playKi(name);else if((name==='frontTeleport'||name==='backTeleport')&&selectedCharacter!=='wesley')playTeleport();
 if(name==='frontTeleport'||name==='backTeleport'){if(selectedCharacter==='wesley'){wesleyTauntStart(name);return true}if(selectedCharacter==='zusk'&&y>=floor-1){zTpStart=clock;zTpFromX=x;actionUntil=clock+ZTP_TOTAL}const tpDir=(name==='frontTeleport'?1:-1)*face;x=clamp(x+tpDir*300,55,905);effects.push({x,y:y-95,t:420,label:'TELEPORTE'});return true}
 if(name==='shot'){const act=actionUntil;if(selectedCharacter==='wesley')wesleyShotSound();setTimeout(()=>{if(action==='shot'&&actionUntil===act){if(selectedCharacter==='wesley')wesleyFireSound();shots.push({x:x+face*100,y:y-92,vx:face*12,damage:a.dmg,size:18,life:1600,color:'#ffdc48',homing:false,spr:selectedCharacter==='zusk',dir:face})}},160);return true}
@@ -219,12 +227,14 @@ function aiStep(dt){
   eshots=eshots.filter(s=>s.life>0&&s.x>0&&s.x<960);
   if(dummy.hp<=0||!fightLive()||dummy.cliffFalling){if(typeof wesleyDummyReset==='function'&&(dummy.wAct||dummy.charging))wesleyDummyReset();return}
   const AI=P2_HUMAN()?P2Pad:window.OpponentAI;
-  if(!P2_HUMAN())dummy.energy=Math.min(100,dummy.energy+8*dt);   // IA recupera sozinha; o P2 humano precisa carregar (L)
+  if(!P2_HUMAN())dummy.energy=dummyChar==='golem'?0:Math.min(100,dummy.energy+8*dt);
+  if(dummyChar==='wesley'&&window.storyWesleyForceUlt2&&window.storyWesleyUlt2Approved&&dummy.hp>0&&dummy.hp<=30&&typeof window.storyTriggerWesleyUlt2==='function')window.storyTriggerWesleyUlt2();   // IA recupera sozinha; o P2 humano precisa carregar (L)
   // golpe em andamento: o dano sai no meio da animação
   const p=dummy.pend;
   if(p&&clock>=p.at){dummy.pend=null;const a=specs[p.name];
+    if(dummyChar==='golem'&&p.name==='kick')golemHammerImpact();
     if(p.name==='shot'){const d=x>=dummy.x?1:-1;if(dummyChar==='wesley')wesleyFireSound();eshots.push({x:dummy.x+d*60,y:floor-92,vx:d*10,damage:a.dmg,size:18,life:1600})}
-    else if(Math.abs(dummy.x-x)<=a.range+8&&Math.abs(y-floor)<80)aiHitPlayer(a.dmg)}
+    else if(Math.abs(dummy.x-x)<=a.range+8+(dummyChar==='golem'?GOLEM_REACH:0)&&Math.abs(y-floor)<80)aiHitPlayer(a.dmg*(dummyChar==='golem'?GOLEM_DMG:1))}
   // Super soco do Wesley em andamento: o inimigo não anda nem ataca; só pode dar parry.
   const lk=superLock();
   if(lk&&!dummy.wasLocked){dummy.lockAt=clock+SUPER_LOCK_REACT[0]+Math.random()*(SUPER_LOCK_REACT[1]-SUPER_LOCK_REACT[0]);dummy.lockDid=P2_HUMAN()||Math.random()>=SUPER_LOCK_PARRY_CHANCE}
@@ -233,7 +243,7 @@ function aiStep(dt){
   if(lk){if(!dummy.lockDid&&clock>=dummy.lockAt){dummy.lockDid=true;aiLockEscape()}return}
   const stunned=clock<dummy.stunUntil,busy=clock<dummy.actionUntil;
   if(dummyChar==='wesley'&&typeof wesleyDummyTick==='function'){if(stunned)wesleyDummyInterrupt();wesleyDummyTick(dt)}
-  const pick=k=>({range:specs[k].range,dmg:specs[k].dmg,cost:specs[k].cost,duration:specs[k].duration});
+  const pick=k=>({range:specs[k].range==null?specs[k].range:specs[k].range+(dummyChar==='golem'?GOLEM_REACH:0),dmg:specs[k].dmg*(dummyChar==='golem'?GOLEM_DMG:1),cost:specs[k].cost,duration:specs[k].duration});
   const s={
     self:{x:dummy.x,hp:dummy.hp,hpMax:dummyMax,energy:dummy.energy,canAct:!stunned&&!busy,busy,stunned,facing:x>=dummy.x?1:-1,character:dummyChar,charging:!!dummy.charging,zone:(typeof wesleyDummyZone==='function'?wesleyDummyZone(dummy.hp):'green')},
     enemy:{x,y,hp,hpMax:maxHp,energy,action,attacking:AI_ATTACKING.includes(action)&&clock<actionUntil,stunned:clock<stunUntil,airborne:y<floor-1,crouching:held.has('crouch'),parrying:clock<=parryUntil,facing:face,character:selectedCharacter},
@@ -247,17 +257,18 @@ function aiStep(dt){
   if((dummyChar==='wesley'||P2_HUMAN())&&r.charge&&!r.attack&&!mv){dummy.energy=Math.min(100,dummy.energy+15*dt);if(!dummy.charging)dummyChargeSet(true);return}
   if(dummy.charging)dummyChargeSet(false);
   const oldX=dummy.x;
-  if(mv){dummy.x=clamp(dummy.x+mv*(P2_HUMAN()?250:200)*dt,55,905);dummyCliffDropBegin();}
+  if(mv){dummy.x=clamp(dummy.x+mv*(P2_HUMAN()?250:dummyChar==='golem'?GOLEM_SPEED:200)*dt,55,905);dummyCliffDropBegin();}
   if(dummyChar==='wesley' && Math.abs(dummy.x-oldX)>.1){
     dummy.wesleyWalkDistance=(dummy.wesleyWalkDistance||0)+Math.abs(dummy.x-oldX);
     dummy.wesleyWalkUntil=clock+130;
   }
-  const n=r.attack;
+  // O Golem prefere sua martelada; o soco continua disponível para variar os golpes.
+  const n=dummyChar==='golem'&&r.attack==='punch'&&Math.random()<.65?'kick':r.attack;
   if(dummyChar==='wesley'&&['superPunch','superKick','superShot','mega','parry'].includes(n)&&typeof wesleyDummyStart==='function'){const a=specs[n];if(a&&dummy.energy>=a.cost&&wesleyDummyStart(n))dummy.energy-=a.cost;return}
   if(n==='punch'||n==='kick'||n==='shot'){
     const a=specs[n];if(dummy.energy<a.cost)return;
-    dummy.energy-=a.cost;dummy.actionUntil=clock+a.duration;if(n==='shot'&&dummyChar==='zusk')playKi('shot');if(n==='punch'||n==='kick')playSnd(n);if(n==='punch'&&dummyChar==='wesley')wesleyPunchSound();if(n==='kick'&&dummyChar==='wesley')wesleyKickSound();if(n==='shot'&&dummyChar==='wesley')wesleyShotSound();dummy.attackAnim=.32;dummy.atkName=n;
-    dummy.pend={name:n,at:clock+(n==='kick'?170:n==='shot'?160:110)};
+    dummy.energy-=a.cost;dummy.actionUntil=clock+(dummyChar==='golem'&&n==='kick'?GOLEM_HAMMER_DURATION*1000:a.duration);if(n==='shot'&&dummyChar==='zusk')playKi('shot');if(n==='punch'||(n==='kick'&&dummyChar!=='golem'))playSnd(n);if(n==='punch'&&dummyChar==='wesley')wesleyPunchSound();if(n==='kick'&&dummyChar==='wesley')wesleyKickSound();if(n==='shot'&&dummyChar==='wesley')wesleyShotSound();dummy.attackAnim=dummyChar==='golem'&&n==='kick'?GOLEM_HAMMER_DURATION:.32;dummy.atkName=n;
+    dummy.pend={name:n,at:clock+(dummyChar==='golem'&&n==='kick'?660:n==='kick'?170:n==='shot'?160:110)};
   }
 }
 function dummyChargeSet(on){dummy.charging=on;if(typeof wesleyDummyChargeSound==='function')wesleyDummyChargeSound(on&&dummyChar==='wesley')}
@@ -559,7 +570,10 @@ function drawWesley(){
 function drawPlayer(){
  if(selectedCharacter==='wesley'){drawWesley();return}
  if(selectedCharacter==='scarecrow'){drawScarecrow();return}
- if(!zuskAtlas.complete||!zuskAtlas.naturalWidth)return;const mg=zuskMegaSprite(),tf=(zuskTele.complete&&zuskTele.naturalWidth)?zuskTeleFrame():-1,jf=(zuskJump.complete&&zuskJump.naturalWidth)?zuskJumpFrame():-1,kf=(zuskKick.complete&&zuskKick.naturalWidth)?zuskKickFrame():-1,cf=(zuskCrouch.complete&&zuskCrouch.naturalWidth)?zuskCrouchFrame():-1,hf=(zuskHurt.complete&&zuskHurt.naturalWidth)?zuskHurtFrame():-1,pf=(zuskPunch.complete&&zuskPunch.naturalWidth)?zuskPunchFrame():-1,chf=(zuskCharge.complete&&zuskCharge.naturalWidth)?zuskChargeFrame():-1,sf=(zuskSuper.complete&&zuskSuper.naturalWidth)?zuskSuperFrame():-1,skf=(zuskSuperKick.complete&&zuskSuperKick.naturalWidth)?zuskSuperKickFrame():-1,shf=(zuskShot.complete&&zuskShot.naturalWidth)?zuskShotFrame():-1,pyf=(zuskParry.complete&&zuskParry.naturalWidth)?zuskParryFrame():-1;
+ if(!zuskAtlas.complete||!zuskAtlas.naturalWidth)return;
+ const faint=window.storyZuskFaint||0,spin=window.storyZuskSpin||0;
+ if(faint||spin){g.save();g.translate(x,y-90);g.rotate(1.32*faint+spin);g.translate(-x,-y+90)}
+ const mg=zuskMegaSprite(),tf=(zuskTele.complete&&zuskTele.naturalWidth)?zuskTeleFrame():-1,jf=(zuskJump.complete&&zuskJump.naturalWidth)?zuskJumpFrame():-1,kf=(zuskKick.complete&&zuskKick.naturalWidth)?zuskKickFrame():-1,cf=(zuskCrouch.complete&&zuskCrouch.naturalWidth)?zuskCrouchFrame():-1,hf=(zuskHurt.complete&&zuskHurt.naturalWidth)?zuskHurtFrame():-1,pf=(zuskPunch.complete&&zuskPunch.naturalWidth)?zuskPunchFrame():-1,chf=(zuskCharge.complete&&zuskCharge.naturalWidth)?zuskChargeFrame():-1,sf=(zuskSuper.complete&&zuskSuper.naturalWidth)?zuskSuperFrame():-1,skf=(zuskSuperKick.complete&&zuskSuperKick.naturalWidth)?zuskSuperKickFrame():-1,shf=(zuskShot.complete&&zuskShot.naturalWidth)?zuskShotFrame():-1,pyf=(zuskParry.complete&&zuskParry.naturalWidth)?zuskParryFrame():-1;
  const crouch=held.has('crouch')&&y>=floor,att=clock<actionUntil?action:'';
  const dur=(att&&specs[att]&&specs[att].duration)||1,p=att?clamp(1-(actionUntil-clock)/dur,0,1):0,a=Math.sin(p*Math.PI);
  const punch=att==='punch'||att==='superPunch',kick=att==='kick'||att==='superKick',cast=att==='shot'||att==='superShot'||att==='mega',big=att==='superPunch'||att==='superKick';
@@ -582,35 +596,36 @@ function drawPlayer(){
   g.beginPath();g.arc(hx-18,hy,22+a*10,-1,1);g.stroke();g.beginPath();g.arc(hx-18,hy,36+a*14,-.8,.8);g.stroke();
   g.restore();
  }
+ if(faint||spin)g.restore();
 }
 let roundTime=99,roundWins=[0,0];
 // ===== V5.8: SISTEMA DE ROUNDS =====
 // Cada lutador tem 3 barras: [verde, amarela, vermelha]. O dano gasta a verde primeiro, depois a amarela e por último a vermelha.
 
 const LIFE_COL=[['#b9ff80','#3fcf4f','#1f8f3a'],['#fff48a','#f7c61b','#c98f08'],['#ff8f7e','#ee3a2e','#a8172a']];
-const WINS_NEEDED=2;
+let WINS_NEEDED=2;
 if(typeof LIFE!=='undefined')LIFE.wesley=[20,30,150]; // Wesley: verde 20, amarela 30, vermelha 150 (total 200)
 const lifeMax=id=>LIFE[id].reduce((a,b)=>a+b,0);
 let maxHp=lifeMax('zusk'),dummyMax=lifeMax('scarecrow');
 let round=1,roundState='fight',rsTimer=0,matchOver=false,roundWinner=-1,banner={text:'',t:0,dur:1};
 // roundState: 'intro' (ROUND n, comandos travados) -> 'fight' -> 'ko' (K.O., comandos travados) -> próximo round ou fim da partida
-const fightLive=()=>!matchOver&&(selectedMode!=='vs'||roundState==='fight');
+const fightLive=()=>!matchOver&&!window.storyLock&&(selectedMode!=='vs'||roundState==='fight');
 function refillLife(){maxHp=lifeMax(selectedCharacter);dummyMax=lifeMax(dummyChar);hp=maxHp;dummy.hp=dummyMax}
 function lifeSegs(total,id){const c=LIFE[id];let r=total;const red=Math.min(r,c[2]);r-=red;const yel=Math.min(r,c[1]);r-=yel;const grn=Math.min(r,c[0]);return [grn,yel,red]}
 function resetFighterState(){playerCliffFalling=false;dummy.cliffFalling=false;dummy.cliffFallY=0;dummy.cliffFallVy=0;x=240;y=floor;vy=0;face=1;walk=0;action='';actionUntil=0;stunUntil=0;parryUntil=0;parryStartAt=-1;parryHitAt=-1;charging=false;energy=0;
   if(pendingShot){clearTimeout(pendingShot);pendingShot=null}
   scareState=0;zMegaStart=-1;zTpStart=-1;zImpacts=[];zShake=0;zDim=0;zCr=0;zChT=0;zChOut=0;
-  dummy.x=stageHazardDamage()?650:730;dummy.flash=0;dummy.attackTimer=0;dummy.attackAnim=0;shots=[];effects=[];held.clear();held2.clear();p2Hit=null;eshots=[];dummy.energy=0;dummy.actionUntil=0;dummy.stunUntil=0;dummy.pend=null;dummy.parryUntil=0;dummy.wasLocked=false;if(typeof wesleyDummyReset==='function')wesleyDummyReset();if(window.OpponentAI)OpponentAI.reset()}
+  dummy.x=stageHazardDamage()?650:730;dummy.flash=0;dummy.attackTimer=0;dummy.attackAnim=0;shots=[];effects=[];held.clear();held2.clear();p2Hit=null;eshots=[];dummy.energy=0;dummy.actionUntil=0;dummy.stunUntil=0;dummy.pend=null;dummy.parryUntil=0;dummy.wasLocked=false;if(typeof wesleyDummyReset==='function')wesleyDummyReset();if(typeof golemHammerBursts!=='undefined')golemHammerBursts=[];if(window.OpponentAI)OpponentAI.reset()}
 function showBanner(text,dur){banner={text,t:dur,dur}}
 function endRound(w,text){if(roundState!=='fight')return;roundState='ko';rsTimer=1.7;roundWinner=w;if(w>=0)roundWins[w]++;showBanner(text||'K.O.',99);shots=[];eshots=[];dummy.pend=null;held.clear();held2.clear();p2Hit=null}
 function nextRound(){if(roundWinner>=0)round++;resetFighterState();hp=maxHp;dummy.hp=dummyMax;roundTime=99;roundState='intro';rsTimer=1.6;showBanner('ROUND '+round,1.6)}
-function finishMatch(){matchOver=true;const pw=roundWins[0]>=WINS_NEEDED;
+function finishMatch(){matchOver=true;const pw=roundWins[0]>=WINS_NEEDED;if(window.storyMatchEnd&&storyMatchEnd(pw))return;
   document.getElementById('endTitle').textContent=(P2_HUMAN()?(pw?'P1 · ':'P2 · '):'')+charName(pw?selectedCharacter:dummyChar)+' VENCEU!';
   document.body.classList.add('matchEnd');const o=document.getElementById('endOverlay');o.hidden=false;const b=o.querySelector('button');if(b)b.focus({preventScroll:true})}
 function hideEndOverlay(){matchOver=false;document.body.classList.remove('matchEnd');document.getElementById('endOverlay').hidden=true}
 function roundUpdate(dt){
   if(banner.t>0)banner.t-=dt;
-  if(selectedMode!=='vs'||matchOver)return;
+  if(selectedMode!=='vs'||matchOver||window.storyLock)return;
   if(roundState==='intro'){rsTimer-=dt;if(rsTimer<=0){roundState='fight';showBanner('LUTE!',.8)}}
   else if(roundState==='fight'){roundTime=Math.max(0,roundTime-dt);
     if(roundTime<=0){const a=hp/maxHp,b=dummy.hp/dummyMax;endRound(a>b?0:a<b?1:-1,a===b?'EMPATE':'TEMPO!')}}
@@ -657,7 +672,7 @@ function portrait(cx,cy,right=false){
  polygon([[-23,-23],[23,-23],[28,-16],[28,20],[20,27],[-20,27],[-28,20],[-28,-16]],'#292332','#e7ac59',3);
  g.beginPath();g.rect(-21,-19,42,38);g.clip();
  g.fillStyle=right?'#58677b':'#293d59';g.fillRect(-21,-19,42,38);
- if(!(right&&dummyMode==='none')){const id=right?dummyChar:selectedCharacter;const pi=id==='scarecrow'?scarePortrait:id==='wesley'?wesleyPortrait:zuskPortrait;if(pi.complete&&pi.naturalWidth)g.drawImage(pi,-21,-19,42,38)}
+ if(!(right&&dummyMode==='none')){const id=right?dummyChar:selectedCharacter;const pi=id==='golem'?golemPortrait:id==='scarecrow'?scarePortrait:id==='wesley'?wesleyPortrait:zuskPortrait;if(pi.complete&&pi.naturalWidth)g.drawImage(pi,-21,-19,42,38)}
  g.restore();
  g.fillStyle=right?'#327cce':'#b93447';g.fillRect(cx-14,cy+25,28,12);
  g.fillStyle='#fff1d0';g.font='bold 10px sans-serif';g.textAlign='center';g.fillText(right?'P2':'P1',cx,cy+34);
@@ -681,8 +696,9 @@ function drawCombatHUD(){
 }
 // Manequim com personagem (padrão: Espantalho, escolhido na tela de seleção ou na pausa do treino).
 // Parado = quadro 0; vira para o jogador; brilha e é empurrado ao levar dano; ataca com o giro (Espantalho) ou o soco (Zusk).
-const charName=id=>({zusk:'ZUSK',scarecrow:'ESPANTALHO',wesley:'WESLEY MAFIOSO'}[id]||'LUTADOR');
+const charName=id=>({zusk:'ZUSK',scarecrow:'ESPANTALHO',wesley:'WESLEY MAFIOSO',golem:'GOLEM ROXO'}[id]||'LUTADOR');
 function drawDummyChar(){
+ if(dummyChar==='golem'){drawGolemDummy();return}
  const ok=i=>i.complete&&i.naturalWidth,flash=dummy.flash>0,fc=x<dummy.x?-1:1;
  const atk=dummy.attackAnim>0,p=atk?clamp(1-dummy.attackAnim/.32,0,.999):0;
  const hq=flash?clamp(1-dummy.flash/170,0,.999):0,hw=Math.sin(hq*Math.PI);
@@ -719,20 +735,41 @@ function drawDummyChar(){
  
  g.restore();
 }
+// Personagens em cena: aparecem antes dos confrontos e continuam visíveis nos diálogos.
+function drawStoryNPC(char,prop){
+ const isW=char==='wesley',useWalk=isW&&prop.walk&&wesleyWalkAtlas.complete&&wesleyWalkAtlas.naturalWidth;
+ const img=isW?(useWalk?wesleyWalkAtlas:wesleyAtlas):scareImg;
+ if(!img||!img.complete||!img.naturalWidth)return;
+ const sp=isW?(useWalk?WES_WALK:WES):ZKE;
+ const sc=isW?sp.s:ZK.s;
+ const fi=useWalk?Math.floor(clock/130)%sp.frames:0;
+ const cw=sp.cw,ch=sp.ch,base=sp.base,ax=sp.ax;
+ const direction=prop.face||(x<=prop.x?-1:1);
+ g.save();g.fillStyle='rgba(16,24,39,.42)';g.beginPath();g.ellipse(prop.x,floor+3,32,6,0,0,Math.PI*2);g.fill();g.restore();
+ g.save();g.translate(Math.round(prop.x),floor);g.scale(direction,1);
+ g.drawImage(img,(fi%sp.cols)*cw,Math.floor(fi/sp.cols)*ch,cw,ch,-ax*sc,-base*sc,cw*sc,ch*sc);
+ g.restore();
+}
 function draw(){g.setTransform(canvas.width/960,0,0,canvas.height/540,0,0);zuskMegaTick();if(zShake>.4){g.translate((Math.random()-.5)*zShake*2,(Math.random()-.5)*zShake*2);zShake*=.85}else zShake=0;if(stageImage.complete&&stageImage.naturalWidth)g.drawImage(stageImage,0,0,960,540);else{g.fillStyle='#c5a46a';g.fillRect(0,0,960,540)}
-drawMegaDim();drawCombatHUD();
+drawMegaDim();if(!window.storyHideHud)drawCombatHUD();
 // Alvo de treino, não é um segundo personagem jogável
+if(window.storyProp){
+ const props=window.storyProp;
+ if(props.golem)drawGolemAt(props.golem.x,{atk:!!props.golem.atk,p:props.golem.p||0});
+ if(props.scarecrow)drawStoryNPC('scarecrow',props.scarecrow);
+ if(props.wesley)drawStoryNPC('wesley',props.wesley);
+}
 if(dummyMode!=='none'){drawDummyChar();if(typeof wesleyDummyDrawStand==='function')wesleyDummyDrawStand(g)}
-drawPlayer();if(typeof drawWesleyStand==='function')drawWesleyStand(g);drawZuskBeam();
+drawPlayer();if(typeof drawWesleyStand==='function')drawWesleyStand(g);drawZuskBeam();if(typeof drawGolemHammerEffects==='function')drawGolemHammerEffects();
 for(let shot of shots){if(shot.wmega){g.save();const gr=g.createRadialGradient(shot.x,shot.y,2,shot.x,shot.y,shot.size);gr.addColorStop(0,'#fff');gr.addColorStop(.4,'#ffe38a');gr.addColorStop(1,'rgba(255,170,40,0)');g.fillStyle=gr;g.beginPath();g.arc(shot.x,shot.y,shot.size,0,Math.PI*2);g.fill();g.restore();continue}if(shot.spr&&zuskOrb.complete&&zuskOrb.naturalWidth){const age=1600-shot.life,fi=age<140?Math.min(3,Math.floor(age/35)):[5,6,7,6][Math.floor((age-140)/55)%4],sc=.17+.13*Math.min(1,age/160);g.save();g.translate(Math.round(shot.x),Math.round(shot.y));g.scale(shot.dir,1);g.drawImage(zuskOrb,fi*ZKO.pw,0,ZKO.pw,ZKO.ph,-ZKO.ax*sc,-ZKO.ay*sc,ZKO.pw*sc,ZKO.ph*sc);g.restore();continue}g.fillStyle=shot.color;g.fillRect(shot.x-shot.size/2,shot.y-shot.size/2,shot.size,shot.size);g.fillStyle='#fff';g.fillRect(shot.x-shot.size/4,shot.y-shot.size/4,shot.size/2,shot.size/2)}
 for(const s of eshots){g.save();if(s.wmega){const gr=g.createRadialGradient(s.x,s.y,2,s.x,s.y,s.size);gr.addColorStop(0,'#fff');gr.addColorStop(.4,'#ffe38a');gr.addColorStop(1,'rgba(255,170,40,0)');g.fillStyle=gr;g.beginPath();g.arc(s.x,s.y,s.size,0,7);g.fill()}else{g.fillStyle=s.homing?'#76dcff':'#ff6b5a';g.strokeStyle='#fff';g.lineWidth=3;g.beginPath();g.arc(Math.round(s.x),Math.round(s.y),s.homing?15:11,0,7);g.fill();g.stroke()}g.restore()}for(let e of effects){if(!/^[-+]/.test(e.label))continue;g.fillStyle='#fff1aa';g.font='bold 17px monospace';g.fillText(e.label,e.x,e.y)}
 drawImpactFrames();
 }
 function tick(now){if(menuOpen||matchOver){auraUpdate(false);last=now;requestAnimationFrame(tick);return;}if(!last)last=now;let dt=Math.min((now-last)/1000,.05);last=now;clock=now;roundUpdate(dt);let dir=fightLive()&&!playerCliffFalling&&!(selectedCharacter==='zusk'&&action==='mega'&&clock<actionUntil)&&!superLock()&&!wesUltOn()?(held.has('right')?1:0)-(held.has('left')?1:0):0;let moving=dir!==0&&!held.has('crouch');if(moving){x=clamp(x+dir*250*dt,55,905);face=dir;walk+=dt*11}else walk=0;
 playerCliffDropBegin();
-y+=vy*dt*60;vy+=.75*dt*60;
-if(!playerCliffFalling&&y>=floor){if(stageHazardDamage()&&x>=STAGE_CLIFF_LEDGE_X)playerCliffDropBegin();else{y=floor;vy=0}}
-playerCliffDropTick();charging=held.has('charge')&&!moving&&fightLive()&&!(selectedCharacter==='zusk'&&action==='mega'&&clock<actionUntil)&&!wesUltOn();auraUpdate(charging);if(selectedCharacter==='wesley'){wesleyTauntTick();if(typeof wesleyUlt2Tick==='function')wesleyUlt2Tick()}if(charging){energy=clamp(energy+15*dt,0,100);chargeTick++}if(AI_ON()){aiStep(dt)}dummyCliffDropTick(dt);if(!AI_ON()&&dummyMode==='attack'&&dummy.hp>0&&fightLive()){dummy.attackTimer+=dt;if(dummy.attackTimer>=3){dummy.attackTimer-=3;dummy.attackAnim=.32;if(Math.abs(dummy.x-x)<115&&Math.abs(y-floor)<80&&!(action==='mega'&&clock<actionUntil)&&!superLock()){if(clock<=parryUntil){parrySuccess();hit(10);effects.push({x,y:y-175,t:550,label:'PARRY! +10'})}else{hp=clamp(hp-10,0,maxHp);stunUntil=clock+500;action='';actionUntil=0;if(selectedCharacter==='wesley')wesleyHurtSound();if(pendingShot){clearTimeout(pendingShot);pendingShot=null}effects.push({x,y:y-160,t:550,label:'-10 VIDA'});effects.push({x,y:y-185,t:500,label:'ATORDOADO'});if(hp===0){if(selectedMode==='vs')endRound(1);else{hp=maxHp;effects.push({x,y:y-190,t:950,label:'TREINO REINICIADO'})}}}}}}dummy.attackAnim=Math.max(0,dummy.attackAnim-dt);for(let s of shots){if(s.homing&&dummyMode!=='none'&&dummy.hp>0){let targetX=dummy.x,targetY=floor-90;let dx=targetX-s.x,dy=targetY-s.y,dist=Math.hypot(dx,dy);if(s.spr&&Math.abs(dx)>4)s.dir=dx>0?1:-1;if(dist>0){let speed=660;let step=Math.min(speed*dt,dist);s.x+=dx/dist*step;s.y+=dy/dist*step;}}else{s.x+=s.vx*dt*60;}s.life-=dt*1000;if(dummyMode!=='none'&&Math.abs(s.x-dummy.x)<s.size/2+22&&Math.abs(s.y-(floor-90))<70&&s.life>0){hit(s.damage);if(s.wmega){zImpacts.push({t:clock,x:dummy.x,y:floor-90,k:2});zShake=Math.max(zShake,12)}s.life=0}}shots=shots.filter(s=>s.life>0&&s.x>0&&s.x<960);effects.forEach(e=>{e.t-=dt*1000;e.y-=dt*15});effects=effects.filter(e=>e.t>0);dummy.flash=Math.max(0,dummy.flash-dt*1000);scareHoldTick();if(clock>=actionUntil)action='';draw();drawBanner();requestAnimationFrame(tick)}requestAnimationFrame(tick);
+if(!window.storyCinematicFall){y+=vy*dt*60;vy+=.75*dt*60;}
+if(!window.storyCinematicFall&&!playerCliffFalling&&y>=floor){if(stageHazardDamage()&&x>=STAGE_CLIFF_LEDGE_X)playerCliffDropBegin();else{y=floor;vy=0}}
+playerCliffDropTick();charging=held.has('charge')&&!moving&&fightLive()&&!(selectedCharacter==='zusk'&&action==='mega'&&clock<actionUntil)&&!wesUltOn();auraUpdate(charging);if(selectedCharacter==='wesley'){wesleyTauntTick();if(typeof wesleyUlt2Tick==='function')wesleyUlt2Tick()}if(charging){energy=clamp(energy+15*dt,0,100);chargeTick++}if(AI_ON()){aiStep(dt)}dummyCliffDropTick(dt);if(!AI_ON()&&dummyMode==='attack'&&dummy.hp>0&&fightLive()){dummy.attackTimer+=dt;if(dummy.attackTimer>=3){dummy.attackTimer-=3;dummy.attackAnim=.32;if(Math.abs(dummy.x-x)<115&&Math.abs(y-floor)<80&&!(action==='mega'&&clock<actionUntil)&&!superLock()){if(clock<=parryUntil){parrySuccess();hit(10);effects.push({x,y:y-175,t:550,label:'PARRY! +10'})}else{hp=clamp(hp-10,0,maxHp);stunUntil=clock+500;action='';actionUntil=0;if(selectedCharacter==='wesley')wesleyHurtSound();if(pendingShot){clearTimeout(pendingShot);pendingShot=null}effects.push({x,y:y-160,t:550,label:'-10 VIDA'});effects.push({x,y:y-185,t:500,label:'ATORDOADO'});if(hp===0){if(selectedMode==='vs')endRound(1);else{hp=maxHp;effects.push({x,y:y-190,t:950,label:'TREINO REINICIADO'})}}}}}}dummy.attackAnim=Math.max(0,dummy.attackAnim-dt);for(let s of shots){if(s.homing&&dummyMode!=='none'&&dummy.hp>0){let targetX=dummy.x,targetY=floor-90;let dx=targetX-s.x,dy=targetY-s.y,dist=Math.hypot(dx,dy);if(s.spr&&Math.abs(dx)>4)s.dir=dx>0?1:-1;if(dist>0){let speed=660;let step=Math.min(speed*dt,dist);s.x+=dx/dist*step;s.y+=dy/dist*step;}}else{s.x+=s.vx*dt*60;}s.life-=dt*1000;if(dummyMode!=='none'&&Math.abs(s.x-dummy.x)<s.size/2+22&&Math.abs(s.y-(floor-90))<70&&s.life>0){hit(s.damage);if(s.wmega){zImpacts.push({t:clock,x:dummy.x,y:floor-90,k:2});zShake=Math.max(zShake,12)}s.life=0}}shots=shots.filter(s=>s.life>0&&s.x>0&&s.x<960);effects.forEach(e=>{e.t-=dt*1000;e.y-=dt*15});effects=effects.filter(e=>e.t>0);dummy.flash=Math.max(0,dummy.flash-dt*1000);scareHoldTick();if(clock>=actionUntil)action='';if(window.storyHook)storyHook(dt);draw();drawBanner();requestAnimationFrame(tick)}requestAnimationFrame(tick);
 
 // Fluxo: Modo -> Personagem -> Cenário -> Jogo
 let menuOpen=true,selectedMode='train',selectedCharacter='zusk',selectedStage='forest',menuPage='home';
@@ -751,20 +788,110 @@ IC.cpu='<svg viewBox="0 0 24 24" fill="#ffd34a" stroke="#5a2a10" stroke-width="1
 IC.duo='<svg viewBox="0 0 24 24" fill="#ffd34a" stroke="#5a2a10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><circle cx="8" cy="8" r="3.2"/><circle cx="16.5" cy="8" r="3.2"/><path d="M2.5 20c0-3.8 2.5-6.2 5.5-6.2s5.5 2.4 5.5 6.2z"/><path d="M14 14.2c.8-.3 1.6-.4 2.5-.4 3 0 5 2.4 5 6.2h-5.4"/></svg>';
 
 let storyMsg='';
+// O save usa "chapter" como a PRÓXIMA fase da campanha. Logo, todos os IDs
+// menores que chapter já foram concluídos e podem ser rejogados sem perder nada.
 function storyLoad(){try{const a=JSON.parse(localStorage.getItem('arena_story_slots')||'[]');return [0,1,2].map(i=>a[i]||null)}catch(e){return [null,null,null]}}
 function storySave(a){try{localStorage.setItem('arena_story_slots',JSON.stringify(a))}catch(e){}}
-function renderStory(){const sl=storyLoad();const fmt=t=>{const d=new Date(t);return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})};
- const rows=sl.map((d,i)=>`<div class="settingsRow"><label>Save ${i+1}<br><span class="menuSmall">${d?`Capítulo ${d.chapter} · ${fmt(d.updated)}`:'Vazio'}</span></label><span>${d?`<button class="slotBtn primary" data-next="storySlot" data-slot="${i}" data-act="continue">Continuar</button> <button class="slotBtn secondary" data-next="storySlot" data-slot="${i}" data-act="new">Novo jogo</button>`:`<button class="slotBtn primary" data-next="storySlot" data-slot="${i}" data-act="new">Começar</button>`}</span></div>`).join('');
- return `<h2><i class="hi">${IC.list}</i>Modo História</h2><p class="menuSmall">Escolha um local de save.</p>${rows}${storyMsg?`<p class="menuSmall">${storyMsg}</p>`:''}<div class="menuStack"><button class="secondary" data-next="home"><i class="gi">${IC.back}</i><span>Voltar</span></button></div>`}
-function storySlotAction(i,act){i=+i;const sl=storyLoad();const now=Date.now();
- if(act==='new'){if(sl[i]&&!confirm('Apagar o Save '+(i+1)+' e começar um novo jogo?'))return;sl[i]={chapter:1,created:now,updated:now};storyMsg='Save '+(i+1)+': novo jogo criado. A história ainda está em construção.'}
- else{sl[i].updated=now;storyMsg='Save '+(i+1)+': continuando do Capítulo '+sl[i].chapter+'. A história ainda está em construção.'}
- storySave(sl);showMenu('story')}
-function showMenu(page){menuOpen=true;menuPage=page;overlay.classList.remove('hidden');overlay.classList.toggle('homeScreen',page==='home');overlay.classList.toggle('stageScreen',page==='stage');overlay.classList.toggle('charScreen',page==='character'||page==='opponent');overlay.classList.toggle('panelScreen',page==='pause'||page==='combos'||page==='config'||page==='story'||page==='vsmode');held.clear();
- if(page==='pause')content.innerHTML=`<h2><i class="hi">${IC.pause}</i>Jogo pausado</h2>${selectedMode==='train'?`<div class="settingsRow"><label for="pauseDummy">Manequim</label><select id="pauseDummy">${[...document.getElementById('dummyMode').options].map(o=>`<option value="${o.value}"${o.value===dummyMode?' selected':''}>${o.text}</option>`).join('')}</select></div><div class="settingsRow"><label for="pauseOpp">Personagem do manequim</label><select id="pauseOpp">${CHARACTERS.map(c=>`<option value="${c.id}"${c.id===dummyChar?' selected':''}>${c.name}</option>`).join('')}</select></div>`:''}<div class="settingsRow"><label for="touchToggle">Controles na tela</label><input type="checkbox" id="touchToggle"${touchOn?' checked':''}></div><div class="menuStack"><button class="primary" data-next="resume"><i class="gi">${IC.play}</i><span>Continuar</span></button><button data-next="combos"><i class="gi">${IC.list}</i><span>Lista de combos</span></button><button class="secondary" data-next="exit"><i class="gi">${IC.exit}</i><span>Sair para o menu</span></button></div>`;
+// Personagens secretos: são desbloqueados ao VENCER cada adversário no Modo História.
+// O registro é global ao navegador (não depende do slot ativo) e é persistente.
+// Compatibilidade: saves antigos que já concluíram o Capítulo 2 liberam os dois.
+const CHARACTER_UNLOCK_KEY='arena_character_unlocks';
+function characterUnlocks(){
+ let saved={};try{saved=JSON.parse(localStorage.getItem(CHARACTER_UNLOCK_KEY)||'{}')||{}}catch(e){}
+ const completedChapter2=storyLoad().some(d=>d&&Math.floor(Number(d.chapter)||1)>=3);
+ return {scarecrow:!!saved.scarecrow||completedChapter2,wesley:!!saved.wesley||completedChapter2};
+}
+function characterUnlocked(id){return id==='zusk'||!!characterUnlocks()[id]}
+function unlockStoryCharacter(id){
+ if(id!=='scarecrow'&&id!=='wesley')return false;
+ const flags=characterUnlocks();if(flags[id])return false;
+ flags[id]=true;
+ try{localStorage.setItem(CHARACTER_UNLOCK_KEY,JSON.stringify(flags))}catch(e){}
+ return true;
+}
+let storyMapSlot=null;
+// Destinos do mapa da campanha. Para ativar uma fase futura, implemente-a em
+// FASES (js/modo-historia.js); a liberação do mapa é calculada pelo save.
+const STORY_MAP_POINTS=[
+ {id:1,name:'Floresta Serena',tag:'O despertar',img:'mapas/floresta-serena.jpg',x:17,y:62},
+ {id:2,name:'O Milharal',tag:'Novos aliados',img:'mapas/milharal.png',x:50,y:41},
+ {id:3,name:'A Cidade',tag:'Próximo destino',img:null,x:83,y:62}
+];
+function storyPlayable(id){return typeof FASES!=='undefined'&&FASES.some(f=>f.id===id)}
+function storyChapter(d){return Math.max(1,Math.floor(Number(d?.chapter)||1))}
+function renderStory(){
+ const sl=storyLoad();
+ const fmt=t=>{const d=new Date(t);return Number.isNaN(d.getTime())?'Data desconhecida':d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})};
+ const rows=sl.map((d,i)=>{
+  const cap=storyChapter(d);
+  const status=!d?'Vazio':cap===1?'Fase 1 em andamento':`Fases concluídas: ${cap-1} · ${storyPlayable(cap)?`Fase ${cap} disponível`:'Próximo capítulo em desenvolvimento'}`;
+  const actions=!d?
+   `<button class="slotBtn primary" data-next="storySlot" data-save-slot="${i}" data-act="new">Começar</button>`:
+   `<button class="slotBtn primary" data-next="storySlot" data-save-slot="${i}" data-act="continue">🗺️ Mapa de fases</button> <button class="slotBtn secondary" data-next="storySlot" data-save-slot="${i}" data-act="new">Novo jogo</button>`;
+  return `<div class="settingsRow story-save-row"><label>Save ${i+1}<br><span class="menuSmall">${status}${d?' · '+fmt(d.updated):''}</span></label><span class="story-save-actions">${actions}</span></div>`;
+ }).join('');
+ return `<h2><i class="hi">${IC.list}</i>Modo História</h2><p class="menuSmall">Escolha um save para abrir o mapa e revisitar fases concluídas.</p>${rows}${storyMsg?`<p class="menuSmall" role="status">${storyMsg}</p>`:''}<div class="menuStack"><button class="secondary" data-next="home"><i class="gi">${IC.back}</i><span>Voltar</span></button></div>`;
+}
+function openStoryMap(i,notice=''){
+ i=Number(i);
+ if(!Number.isInteger(i)||i<0||i>2||!storyLoad()[i]){storyMsg='Escolha um save válido para abrir o mapa.';showMenu('story');return}
+ storyMapSlot=i;storyMsg=notice;showMenu('storyMap');
+}
+function renderStoryMap(){
+ const sl=storyLoad(),d=sl[storyMapSlot];
+ if(!d)return '<h2>Save indisponível</h2><button data-next="story">Voltar</button>';
+ const cap=storyChapter(d),cleared=STORY_MAP_POINTS.filter(p=>p.id<cap).length;
+ const nodes=STORY_MAP_POINTS.map(p=>{
+  const completed=p.id<cap, current=p.id===cap;
+  const implemented=storyPlayable(p.id);
+  const enabled=(completed||current)&&implemented;
+  const state=completed?'complete':current?'current':'locked';
+  const stateText=completed?'✓ CONCLUÍDA':current?(implemented?'● FASE ATUAL':'EM DESENVOLVIMENTO'):'🔒 BLOQUEADA';
+  const action=completed?'REJOGAR':current&&implemented?'JOGAR':'INDISPONÍVEL';
+  const img=p.img?`<img src="${p.img}" alt="" loading="lazy">`:'<span class="sm-city-art" aria-hidden="true">🏙️</span>';
+  return `<button type="button" class="sm-node sm-${state}${!implemented?' sm-soon':''}" style="--node-x:${p.x}%;--node-y:${p.y}%" data-next="storyMapStage" data-phase="${p.id}" ${enabled?'':'disabled'} aria-label="Fase ${p.id}: ${p.name}. ${stateText}. ${enabled?action:''}">
+   <span class="sm-node-number">${p.id}</span><span class="sm-node-photo">${img}</span><span class="sm-node-meta"><strong>FASE ${p.id}</strong><span class="sm-node-name">${p.name}</span><small>${p.tag}</small><em>${stateText}</em><span class="sm-node-action">${action}</span></span>
+  </button>`;
+ }).join('');
+ return `<div class="sm-layout"><header class="sm-header"><div><span class="sm-eyebrow">KING OF GANGUES BANGUES · CAMPANHA</span><h2>Mapa de fases</h2><p>Save ${storyMapSlot+1} · ${cleared} ${cleared===1?'fase concluída':'fases concluídas'}</p></div><div class="sm-compass" aria-hidden="true">✦<small>N</small></div></header>
+ <div class="sm-world" aria-label="Trilha de progresso da campanha">
+ <div class="sm-cloud" aria-hidden="true"></div>
+ <svg class="sm-route" viewBox="0 0 1000 560" preserveAspectRatio="none" aria-hidden="true"><path class="sm-road-outline" d="M170 347 C270 350 320 160 490 229 S720 400 830 347"/><path class="sm-road" d="M170 347 C270 350 320 160 490 229 S720 400 830 347"/></svg>
+ <div class="sm-nodes">${nodes}</div>
+ <span class="sm-map-label sm-label-forest">FLORESTA</span><span class="sm-map-label sm-label-fields">CAMPOS</span><span class="sm-map-label sm-label-city">ALÉM DO HORIZONTE</span>
+ </div><div class="sm-bottom"><div class="sm-legend"><span><i class="sm-legend-mark complete"></i>Concluída · pode rejogar</span><span><i class="sm-legend-mark current"></i>Fase atual</span><span><i class="sm-legend-mark locked"></i>Bloqueada</span></div>
+ <p class="sm-info" role="status">${storyMsg||'Selecione um destino disponível. Rejogar fases concluídas não apaga o seu save.'}</p>
+ <button type="button" class="sm-return" data-next="story">← Voltar aos saves</button></div></div>`;
+}
+function storyMapAction(phase){
+ if(menuPage!=='storyMap')return;
+ const id=Number(phase),d=storyLoad()[storyMapSlot],cap=storyChapter(d);
+ if(!d||!Number.isInteger(id)||(!STORY_MAP_POINTS.some(p=>p.id===id))){storyMsg='Fase inválida.';showMenu('storyMap');return}
+ if(id>cap){storyMsg='Conclua as fases anteriores para desbloquear este destino.';showMenu('storyMap');return}
+ if(!storyPlayable(id)){storyMsg=`A Fase ${id} ainda está em desenvolvimento.`;showMenu('storyMap');return}
+ storyMsg='';
+ if(typeof window.storyPlay==='function')window.storyPlay(storyMapSlot,id);
+ else{storyMsg='Não foi possível carregar js/modo-historia.js.';showMenu('storyMap')}
+}
+function storySlotAction(i,act){
+ i=Number(i);
+ if(!Number.isInteger(i)||i<0||i>2)return;
+ const sl=storyLoad(),now=Date.now();
+ if(act==='new'){
+  if(sl[i]&&!confirm('Apagar o Save '+(i+1)+' e começar um novo jogo?'))return;
+  sl[i]={chapter:1,created:now,updated:now};
+  storySave(sl);
+ }else if(act==='continue'||act==='replay'){
+  if(!sl[i]){storyMsg='Este save está vazio. Escolha Começar.';showMenu('story');return}
+ }else return;
+ openStoryMap(i);
+}
+function showMenu(page){menuOpen=true;menuPage=page;overlay.classList.remove('hidden');overlay.classList.toggle('homeScreen',page==='home');overlay.classList.toggle('stageScreen',page==='stage');overlay.classList.toggle('charScreen',page==='character'||page==='opponent');overlay.classList.toggle('panelScreen',page==='pause'||page==='combos'||page==='config'||page==='story'||page==='vsmode');overlay.classList.toggle('storyMapScreen',page==='storyMap');held.clear();
+ if(page==='pause')content.innerHTML=`<h2><i class="hi">${IC.pause}</i>Jogo pausado</h2>${selectedMode==='train'?`<div class="settingsRow"><label for="pauseDummy">Manequim</label><select id="pauseDummy">${[...document.getElementById('dummyMode').options].map(o=>`<option value="${o.value}"${o.value===dummyMode?' selected':''}>${o.text}</option>`).join('')}</select></div><div class="settingsRow"><label for="pauseOpp">Personagem do manequim</label><select id="pauseOpp">${CHARACTERS.filter(c=>characterUnlocked(c.id)).map(c=>`<option value="${c.id}"${c.id===dummyChar?' selected':''}>${c.name}</option>`).join('')}</select></div>`:''}<div class="settingsRow"><label for="touchToggle">Controles na tela</label><input type="checkbox" id="touchToggle"${touchOn?' checked':''}></div><div class="menuStack"><button class="primary" data-next="resume"><i class="gi">${IC.play}</i><span>Continuar</span></button><button data-next="combos"><i class="gi">${IC.list}</i><span>Lista de combos</span></button><button class="secondary" data-next="exit"><i class="gi">${IC.exit}</i><span>Sair para o menu</span></button></div>`;
  if(page==='combos')content.innerHTML=`<h2><i class="hi">${IC.list}</i>Combos do ${CHARACTERS.find(c=>c.id===selectedCharacter)?.name||'Lutador'}</h2><p class="menuSmall">Aperte os dois botões juntos, em qualquer ordem (até 0,12 s de diferença; Pulo + R até 0,2 s), mantendo os dois pressionados.</p><div class="comboScroll"><table class="comboTable"><thead><tr><th>Golpe</th><th>Comando</th><th>Energia</th><th>Dano</th></tr></thead><tbody>${[['Soco','E',0,5],['Chute','Q',0,5],['Tiro comum','R',30,15],(selectedCharacter==='scarecrow'?['Super Soco (segurar)','E + R',5,'5 por golpe']:['Super Soco','E + R',40,selectedCharacter==='wesley'?'11 x 3':20]),['Super Chute','Q + R',40,20],...(selectedCharacter==='wesley'?[['Provocação','Trás + R',0,'+40 energia'],['Provocação','Frente + R',0,'+40 energia']]:[['Teleporte para trás','Trás + R',30,'—'],['Teleporte para frente','Frente + R',30,'—']]),['Super Tiro Teleguiado','W + R',60,30],['Parry','S + R',20,10],['Super Mega Ultra Tiro','R + R',100,selectedCharacter==='scarecrow'?60:selectedCharacter==='wesley'?((specs.mega&&specs.mega.dmg)||'?'):'3 x 25']].map(a=>`<tr>${a.map(v=>`<td>${v}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="menuStack"><button class="secondary" data-next="pause"><i class="gi">${IC.back}</i><span>Voltar à pausa</span></button><button class="primary" data-next="resume"><i class="gi">${IC.play}</i><span>Continuar</span></button></div>`;
- if(page==='home')content.innerHTML=`<div class="homeArt" aria-hidden="true"></div><div class="homeTitle">ARENA DAS ORIGENS<small>JOGO DE LUTA</small></div><button class="homeHotspot story" aria-label="Modo História" title="Modo História" data-next="story"></button><button class="homeHotspot vs" aria-label="Versus" title="Versus" data-next="mode" data-mode="vs"></button><button class="homeHotspot train" aria-label="Treino" title="Treino" data-next="mode" data-mode="train"></button><button class="homeHotspot config" aria-label="Opções" title="Opções" data-next="config"></button>`;
+ if(page==='home')content.innerHTML=`<div class="homeArt" aria-hidden="true"></div><div class="homeTitle">King of Gangues Bangues<small>JOGO DE LUTA</small></div><button class="homeHotspot story" aria-label="Modo História" title="Modo História" data-next="story"></button><button class="homeHotspot vs" aria-label="Versus" title="Versus" data-next="mode" data-mode="vs"></button><button class="homeHotspot train" aria-label="Treino" title="Treino" data-next="mode" data-mode="train"></button><button class="homeHotspot config" aria-label="Opções" title="Opções" data-next="config"></button>`;
  if(page==='story')content.innerHTML=renderStory();
+ if(page==='storyMap')content.innerHTML=renderStoryMap();
  if(page==='vsmode')content.innerHTML=`<h2><i class="hi">${IC.duo}</i>Versus</h2><p class="menuSmall" style="text-align:center">Contra quem você quer lutar?</p><div class="menuStack"><button class="primary" data-next="character" data-vs="ai"><i class="gi">${IC.cpu}</i><span>Contra a IA</span></button><button data-next="character" data-vs="player"><i class="gi">${IC.duo}</i><span>Contra outro jogador</span></button><button class="secondary" data-next="home"><i class="gi">${IC.back}</i><span>Voltar</span></button></div><p class="menuSmall"><b>P1:</b> W A S D mover · E soco · Q chute · R especial · Shift carregar<br><b>P2:</b> ← → mover · P soco · O chute · I especial · L carregar</p>`;
  if(page==='character'||page==='opponent')renderCharacter();
  if(page==='stage')renderStage();
@@ -780,7 +907,7 @@ function fitCanvas(){const w=document.getElementById('stageWrap').clientWidth,k=
 addEventListener('resize',fitCanvas);fitCanvas();
 content.addEventListener('change',e=>{
  if(e.target.id==='touchToggle'){touchOn=e.target.checked;applyTouchUI()}
- if(e.target.id==='pauseOpp'){dummyChar=e.target.value;dummyMax=lifeMax(dummyChar);dummy.hp=dummyMax;dummy.flash=0}
+ if(e.target.id==='pauseOpp'&&characterUnlocked(e.target.value)){dummyChar=e.target.value;dummyMax=lifeMax(dummyChar);dummy.hp=dummyMax;dummy.flash=0}
  if(e.target.id==='pauseDummy'){const sel=document.getElementById('dummyMode');sel.value=e.target.value;sel.dispatchEvent(new Event('change'))}
 });
 
@@ -795,15 +922,24 @@ let charPage=0;
 const cxPos=(r,b=0)=>`left:${(r[0]-b)/16.72}%;top:${(r[1]-b)/9.41}%;width:${(r[2]+2*b)/16.72}%;height:${(r[3]+2*b)/9.41}%`;
 function charPages(){return Math.max(1,Math.ceil(CHARACTERS.length/CHAR_PER_PAGE))}
 function renderCharacter(){
- const opp=menuPage==='opponent',sel=CHARACTERS.find(c=>c.id===(opp?dummyChar:selectedCharacter))||CHARACTERS[0];if(opp)dummyChar=sel.id;else selectedCharacter=sel.id;
- const B=6; // a arte do slot entra 6px por baixo da moldura, sem frestas nos cantos
+ const opp=menuPage==='opponent';
+ const wanted=opp?dummyChar:selectedCharacter;
+ const sel=CHARACTERS.find(c=>c.id===wanted&&characterUnlocked(c.id))||CHARACTERS[0];
+ if(opp)dummyChar=sel.id;else selectedCharacter=sel.id;
+ const B=6; // arte do slot entra por baixo da moldura, sem frestas nas bordas
+ const lockSvg='<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M20 27v-8a12 12 0 0 1 24 0v8" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round"/><rect x="12" y="27" width="40" height="32" rx="6" fill="currentColor"/><circle cx="32" cy="40" r="4" fill="#474747"/><path d="M30 43h4l2 10h-8z" fill="#474747"/></svg>';
  let h='<div class="charBg" aria-hidden="true"></div>';
  if(opp)h+=`<div class="cx-p2" style="${cxPos([138,130,168,152])}"><svg viewBox="0 0 168 152" aria-hidden="true"><path d="M3 16Q84 -4 165 16L165 112L110 118L84 150L58 118L3 112Z" fill="#3a1a0a"/><path d="M10 22Q84 6 158 22L158 104L106 110L84 138L62 110L10 104Z" fill="#3b82d6"/><path d="M10 22Q84 6 158 22L158 44Q84 30 10 44Z" fill="#6aa7ee"/><path d="M70 118L98 118L84 136Z" fill="#f5b93a"/><text x="84" y="84" text-anchor="middle" font-family="Georgia,serif" font-weight="900" font-size="54" fill="#fff1d0" stroke="#3a1a0a" stroke-width="7" paint-order="stroke">P2</text></svg></div><div class="cx-title" style="${cxPos([560,48,550,74])}">${P2_HUMAN()?'Seleção do Jogador 2':'Seleção do Manequim'}</div>`;
  CX_SLOTS.forEach((r,i)=>{const c=CHARACTERS[charPage*CHAR_PER_PAGE+i];
-  h+=c?`<div class="cx-img" style="${cxPos(r,B)}">${(c.thumb||c.art)()}</div>`:`<div class="cx-img cx-locked" style="${cxPos(r,B)}"></div>`;});
+  if(!c){h+=`<div class="cx-img cx-locked" style="${cxPos(r,B)}"></div>`;return}
+  const locked=!characterUnlocked(c.id);
+  h+=`<div class="cx-img${locked?' cx-secret':''}" style="${cxPos(r,B)}">${(c.thumb||c.art)()}${locked?`<span class="cx-secret-lock">${lockSvg}</span>`:''}</div>`;
+ });
  CX_SLOTS.forEach((r,i)=>{const c=CHARACTERS[charPage*CHAR_PER_PAGE+i];
-  h+=c?`<button class="cx-hit${c.id===sel.id?' sel':''}" style="${cxPos(r)}" data-char="${c.id}" aria-pressed="${c.id===sel.id}" aria-label="Selecionar ${c.name}"><span class="cx-label">${c.name}</span></button>`
-      :`<div class="cx-hit cx-lock" style="${cxPos(r)}"></div>`;});
+  if(!c){h+=`<div class="cx-hit cx-lock" style="${cxPos(r)}"></div>`;return}
+  const locked=!characterUnlocked(c.id);
+  h+=`<button type="button" class="cx-hit${locked?' cx-unavailable':c.id===sel.id?' sel':''}" style="${cxPos(r)}" data-char="${c.id}" ${locked?'disabled':'aria-pressed="'+(c.id===sel.id)+'"'} aria-label="${locked?'Personagem secreto bloqueado':('Selecionar '+c.name)}" title="${locked?'Vença este personagem no Modo História para desbloquear':c.name}"><span class="cx-label">${locked?'?????':c.name}</span></button>`;
+ });
  h+=`<div class="cx-shadow" style="${cxPos([150,672,260,34])}"></div><div class="cx-big" style="${cxPos(CX_BIG)}">${sel.art()}</div>`;
  h+=`<div class="cx-name" style="${cxPos(CX_NAME)}">${sel.name}</div>`;
  h+=`<button class="cx-btn cx-arrow" style="${cxPos(CX_LEFT)}" data-cpage="-1" aria-label="Página anterior"></button><button class="cx-btn cx-arrow" style="${cxPos(CX_RIGHT)}" data-cpage="1" aria-label="Próxima página"></button>`;
@@ -812,7 +948,7 @@ function renderCharacter(){
  content.innerHTML=h;
 }
 content.addEventListener('click',e=>{
- const c=e.target.closest('[data-char]');if(c){if(menuPage==='opponent')dummyChar=c.dataset.char;else selectedCharacter=c.dataset.char;renderCharacter();return}
+ const c=e.target.closest('[data-char]');if(c){if(!characterUnlocked(c.dataset.char))return;if(menuPage==='opponent')dummyChar=c.dataset.char;else selectedCharacter=c.dataset.char;renderCharacter();return}
  const p=e.target.closest('[data-cpage]');if(p){const n=charPages();if(n>1){charPage=(charPage+ +p.dataset.cpage+n)%n;renderCharacter()}}
 });
 // Teclado na tela de personagens: setas escolhem, Z/Enter confirmam (Esc volta, pelo tratador global)
@@ -820,7 +956,11 @@ document.addEventListener('keydown',e=>{
  if(!menuOpen||(menuPage!=='character'&&menuPage!=='opponent'))return;
  const d={ArrowLeft:-1,ArrowRight:1,ArrowUp:-4,ArrowDown:4}[e.key];
  if(d){e.preventDefault();e.stopImmediatePropagation();
-  const opp=menuPage==='opponent',i=CHARACTERS.findIndex(c=>c.id===(opp?dummyChar:selectedCharacter)),n=Math.max(0,Math.min(CHARACTERS.length-1,i+d));
-  if(opp)dummyChar=CHARACTERS[n].id;else selectedCharacter=CHARACTERS[n].id;charPage=Math.floor(n/CHAR_PER_PAGE);renderCharacter();return}
+  const opp=menuPage==='opponent',i=CHARACTERS.findIndex(c=>c.id===(opp?dummyChar:selectedCharacter));
+  let n=Math.max(0,Math.min(CHARACTERS.length-1,i+d));
+  const direction=d>0?1:-1;
+  while(n>=0&&n<CHARACTERS.length&&!characterUnlocked(CHARACTERS[n].id))n+=direction;
+  if(n>=0&&n<CHARACTERS.length){if(opp)dummyChar=CHARACTERS[n].id;else selectedCharacter=CHARACTERS[n].id;charPage=Math.floor(n/CHAR_PER_PAGE)}
+  renderCharacter();return}
  if(e.key==='Enter'||e.key.toLowerCase()==='z'){e.preventDefault();e.stopImmediatePropagation();showMenu(menuPage==='opponent'?'stage':'opponent')}
 },true);
